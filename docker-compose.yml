@@ -5,8 +5,8 @@ services:
     image: postgres:15-alpine
     restart: always
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: englishmaster
+      POSTGRES_PASSWORD: password123
       POSTGRES_DB: englishmaster
     ports:
       - '5433:5432'
@@ -20,6 +20,29 @@ services:
       - '6379:6379'
     volumes:
       - redis_data:/data
+
+  backend:
+    build: ./backend
+    restart: always
+    ports:
+      - "4001:4001"
+    environment:
+      DATABASE_URL: postgresql://englishmaster:password123@db:5432/englishmaster
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - db
+      - redis
+
+  frontend:
+    build: ./frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4001/api/v1
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:

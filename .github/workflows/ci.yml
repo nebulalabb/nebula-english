@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+      - name: Install dependencies
+        run: cd backend && pnpm install --frozen-lockfile
+      - name: Lint
+        run: cd backend && pnpm run lint
+      - name: Build
+        run: cd backend && pnpm run build
+
+  frontend-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+      - name: Install dependencies
+        run: cd frontend && pnpm install --frozen-lockfile
+      - name: Build
+        run: cd frontend && pnpm run build
