@@ -47,3 +47,41 @@
 2026-03-23 10:12:15:1215 [31merror[39m: [31m401 - Email hoặc mật khẩu không chính xác - /api/v1/auth/login - POST - ::1[39m
 2026-03-23 10:19:14:1914 [31merror[39m: [31m401 - Unauthorized - /api/v1/placement-test/questions - GET - ::1[39m
 2026-03-23 10:19:14:1914 [31merror[39m: [31m401 - Unauthorized - /api/v1/placement-test/questions - GET - ::1[39m
+2026-03-23 12:04:50:450 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.user.findUnique()` invocation in[39m
+[31mE:\Web hocEnglish\nebula-english\backend\src\modules\auth\auth.service.ts:25:44[39m
+
+[31m  22 static async register(userData: any) {[39m
+[31m  23   const { email, password, name } = userData;[39m
+[31m  24 [39m
+[31m→ 25   const existingUser = await prisma.user.findUnique([39m
+[31merror: Environment variable not found: DATABASE_URL.[39m
+[31m  -->  schema.prisma:7[39m
+[31m   | [39m
+[31m 6 |   provider = "postgresql"[39m
+[31m 7 |   url      = env("DATABASE_URL")[39m
+[31m   | [39m
+
+[31mValidation Error Count: 1 - /api/v1/auth/register - POST - ::1[39m
+2026-03-23 12:16:17:1617 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.user.findUnique()` invocation in[39m
+[31mE:\Web hocEnglish\nebula-english\backend\src\modules\auth\auth.service.ts:25:44[39m
+
+[31m  22 static async register(userData: any) {[39m
+[31m  23   const { email, password, name } = userData;[39m
+[31m  24 [39m
+[31m→ 25   const existingUser = await prisma.user.findUnique([39m
+[31merror: Environment variable not found: DATABASE_URL.[39m
+[31m  -->  schema.prisma:7[39m
+[31m   | [39m
+[31m 6 |   provider = "postgresql"[39m
+[31m 7 |   url      = env("DATABASE_URL")[39m
+[31m   | [39m
+
+[31mValidation Error Count: 1 - /api/v1/auth/register - POST - ::1[39m
+2026-03-28 18:36:10:3610 [31merror[39m: [31m401 - Token không hợp lệ hoặc đã hết hạn - /api/v1/solver/history?page=1&limit=50 - GET - ::1[39m
+2026-03-28 18:36:10:3610 [31merror[39m: [31m401 - Token không hợp lệ hoặc đã hết hạn - /api/v1/solver/history?page=1&limit=50 - GET - ::1[39m
+2026-03-28 18:46:55:4655 [31merror[39m: [31m401 - Token không hợp lệ hoặc đã hết hạn - /api/v1/solver/history?page=1&limit=50 - GET - ::1[39m
+2026-03-28 18:46:55:4655 [31merror[39m: [31m401 - Token không hợp lệ hoặc đã hết hạn - /api/v1/solver/history?page=1&limit=50 - GET - ::1[39m
+2026-03-28 18:47:00:470 [31merror[39m: [31m401 - Bạn chưa đăng nhập - /api/v1/solver/history?page=1&limit=50 - GET - ::1[39m
+2026-03-28 18:47:00:470 [31merror[39m: [31m401 - Bạn chưa đăng nhập - /api/v1/solver/history?page=1&limit=50 - GET - ::1[39m

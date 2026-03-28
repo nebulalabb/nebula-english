@@ -1,0 +1,229 @@
+Đã đọc file. Tôi sẽ bẻ nhỏ toàn bộ dự án thành các phần cụ thể, dễ thực thi:
+
+---
+
+## 🔍 BẺ NHỎ DỰ ÁN NEBULALAB.VN
+
+---
+
+### 🧱 TẦNG 1 — NỀN TẢNG CHUNG (Dùng cho toàn bộ platform)
+
+Đây là thứ phải làm **trước tất cả**, vì mọi module đều cần:
+
+| Hạng mục | Việc cần làm | Độ ưu tiên |
+|---|---|---|
+| **Auth** | Đăng ký / đăng nhập bằng JWT + OAuth2 (Google) | 🔴 Bắt buộc |
+| **User Profile** | Lưu thông tin, gói Free/Premium, lịch sử dùng | 🔴 Bắt buộc |
+| **Trang chủ** | Landing page + điều hướng đến các danh mục (Học tập, Sức khỏe...) | 🔴 Bắt buộc |
+| **Dashboard Học Tập** | Trang trung tâm hiển thị 7 công cụ | 🔴 Bắt buộc |
+| **Quota / Limit engine** | Đếm số lần dùng, chặn khi hết free quota | 🟡 Làm sớm |
+| **Thanh toán** | Nâng cấp Premium (VNPay / Stripe) | 🟡 Làm sớm |
+| **DB schema cơ bản** | User, Session, UsageLog, Subscription | 🔴 Bắt buộc |
+
+---
+
+### 🛠️ TẦNG 2 — 7 MODULE (Bẻ nhỏ từng cái)
+
+---
+
+#### 🔥 Module 1 — AI Flashcard + Spaced Repetition
+
+**Input:** File PDF hoặc text nhập tay  
+**Output:** Bộ flashcard, hệ thống ôn tập thông minh
+
+```
+Việc cần làm:
+├── UI upload PDF / nhập text
+├── Gọi Gemini API → parse ra cặp [Câu hỏi / Câu trả lời]
+├── Lưu flashcard vào DB (gắn với user)
+├── Giao diện flip card (front/back)
+├── Thuật toán Spaced Repetition (SM-2 algorithm)
+│     → Dễ: ôn sau 7 ngày
+│     → Trung bình: ôn sau 3 ngày  
+│     → Khó: ôn lại ngay hôm sau
+├── Thông báo nhắc ôn (email hoặc in-app)
+└── Giới hạn Free: 20 flashcard/tháng
+```
+
+**DB cần:** `flashcard_sets`, `flashcards`, `review_schedule`
+
+---
+
+#### 🚀 Module 2 — Giải bài từng bước
+
+**Input:** Câu hỏi nhập tay (text / ảnh chụp bài)  
+**Output:** Lời giải chi tiết từng bước
+
+```
+Việc cần làm:
+├── Ô nhập câu hỏi (text + upload ảnh)
+├── Chọn môn học (Toán, Lý, Hóa, Anh, ...)
+├── Gọi Gemini API với prompt được thiết kế giải từng bước
+├── Render kết quả có định dạng đẹp (markdown + LaTeX cho Toán)
+├── Nút "Giải lại" / "Hỏi thêm"
+├── Lịch sử các bài đã hỏi
+└── Giới hạn Free: 5 lần/ngày
+```
+
+**DB cần:** `solve_history`
+
+---
+
+#### 📚 Module 3 — Luyện đề + Chấm điểm tự động
+
+**Input:** Đề có sẵn hoặc AI tạo đề  
+**Output:** Điểm số + phân tích điểm yếu
+
+```
+Việc cần làm:
+├── Kho đề (trắc nghiệm, theo môn/lớp)
+├── Giao diện làm bài có đồng hồ đếm ngược
+├── Submit → chấm điểm tự động
+├── Màn hình kết quả: điểm, đáp án đúng, giải thích
+├── Biểu đồ phân tích: chủ đề nào yếu nhất
+├── AI tạo đề theo chủ đề (dùng Gemini)
+└── Free: 3 đề/tháng | Premium: không giới hạn
+```
+
+**DB cần:** `exams`, `questions`, `user_attempts`, `answers`
+
+---
+
+#### 🎯 Module 4 — Micro-learning 5 phút/ngày
+
+**Input:** Người dùng chọn chủ đề muốn học  
+**Output:** Bài học ngắn mỗi ngày + streak tracking
+
+```
+Việc cần làm:
+├── Onboarding: chọn chủ đề (Tiếng Anh, kỹ năng mềm, ...)
+├── Hiển thị bài học ngắn hàng ngày (có thể pre-written hoặc AI gen)
+├── Dạng bài: đọc + 1 câu quiz nhỏ cuối bài
+├── Streak counter (chuỗi ngày học liên tiếp)
+├── Reminder notification (email/in-app)
+└── Premium: mở khoá toàn bộ kho bài học
+```
+
+**DB cần:** `lessons`, `user_streaks`, `lesson_progress`
+
+---
+
+#### 🧠 Module 5 — AI Note + Summary
+
+**Input:** Paste text hoặc upload file PDF/DOCX  
+**Output:** Tóm tắt + highlight ý chính + lưu note
+
+```
+Việc cần làm:
+├── Ô nhập text lớn / upload file (Cloudinary)
+├── Gọi Gemini API → tóm tắt theo dạng:
+│     - Bullet points ý chính
+│     - Tóm tắt 1 đoạn ngắn
+│     - Highlight từ khóa quan trọng
+├── Lưu note vào thư viện cá nhân
+├── Tìm kiếm note đã lưu
+└── Free: 3 lần/ngày | Premium: không giới hạn
+```
+
+**DB cần:** `notes`, `summaries`
+
+---
+
+#### 👨‍🏫 Module 6 — Tutor Marketplace
+
+**Input:** Học sinh tìm gia sư / Gia sư đăng ký  
+**Output:** Kết nối 2 bên, đặt lịch học
+
+```
+Việc cần làm:
+├── Form đăng ký gia sư (môn, giá/giờ, lịch rảnh, CV)
+├── Trang tìm kiếm gia sư (filter theo môn, giá, đánh giá)
+├── Profile gia sư chi tiết
+├── Đặt lịch học + thanh toán qua platform
+├── Hệ thống đánh giá sau buổi học
+├── Platform thu commission 10–15%
+└── Phase 1: chỉ Toán + Tiếng Anh
+```
+
+**DB cần:** `tutors`, `bookings`, `reviews`, `payments`
+
+---
+
+#### 🧪 Module 7 — Quiz Generator
+
+**Input:** Upload bài học hoặc nhập text  
+**Output:** Bộ câu hỏi quiz tự động
+
+```
+Việc cần làm:
+├── Upload nội dung (text / PDF)
+├── Chọn: số câu hỏi, độ khó, dạng câu (trắc nghiệm / đúng-sai / điền vào chỗ trống)
+├── Gọi Gemini API → tạo quiz
+├── Preview và chỉnh sửa quiz trước khi lưu
+├── Làm quiz ngay hoặc chia sẻ link
+└── Free: 1 quiz/ngày, tối đa 10 câu | Premium: không giới hạn
+```
+
+**DB cần:** `quizzes`, `quiz_questions`, `quiz_attempts`
+
+---
+
+### 📦 TẦNG 3 — TECH STACK CỤ THỂ
+
+```
+Frontend (Next.js):
+├── /app/(auth)/login, register
+├── /app/dashboard          ← trang chủ sau đăng nhập
+├── /app/learn              ← hub 7 công cụ
+│   ├── /flashcard
+│   ├── /solver
+│   ├── /exam
+│   ├── /microlearn
+│   ├── /notes
+│   ├── /tutor
+│   └── /quiz
+└── /app/settings, /billing
+
+Backend (Node.js + Express/Fastify):
+├── /api/auth
+├── /api/user
+├── /api/ai          ← wrapper gọi Gemini
+├── /api/flashcard
+├── /api/solver
+├── /api/exam
+├── /api/notes
+├── /api/tutor
+├── /api/quiz
+└── /api/billing
+```
+
+---
+
+### 🗓️ THỨ TỰ THỰC HIỆN (Cụ thể hóa)
+
+```
+Sprint 1 (Tuần 1–2):
+  ✅ Setup project (Next.js + Node.js + PostgreSQL)
+  ✅ Auth (đăng ký / đăng nhập / JWT)
+  ✅ Trang chủ + Dashboard Học Tập
+  ✅ Module 2: Giải bài từng bước (đơn giản nhất, viral nhất)
+
+Sprint 2 (Tuần 3–4):
+  ✅ Module 1: Flashcard (upload PDF → gen card → flip card)
+  ✅ Quota engine (giới hạn free)
+  ✅ User profile
+
+Sprint 3 (Tuần 5–6):
+  ✅ Module 5: AI Note + Summary
+  ✅ Thanh toán / nâng cấp Premium
+  ✅ Module 7: Quiz Generator
+
+Sprint 4 (Tuần 7–8):
+  ✅ Module 3: Luyện đề
+  ✅ Module 4: Micro-learning
+  ✅ Module 6: Tutor Marketplace (MVP nhẹ)
+```
+
+---
+
+Bạn muốn bắt đầu **code Sprint 1** luôn, hay cần thêm gì trước (wireframe, ERD database, API spec...)?

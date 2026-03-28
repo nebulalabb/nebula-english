@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import authRoutes from './auth/auth.routes';
 import userRoutes from './users/user.routes';
-import placementTestRoutes from './placement-test/placement-test.routes';
+import solverRoutes from './solver/solver.routes';
+import flashcardRoutes from './flashcard/flashcard.routes';
+import notesRoutes from './notes/notes.routes';
 
 const router = Router();
 
@@ -20,6 +22,8 @@ router.get('/health', (req, res) => {
 
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
-router.use('/placement-test', placementTestRoutes);
+router.use('/solver', solverRoutes);
+router.use('/flashcards', flashcardRoutes);
+router.use('/notes', notesRoutes);
 
 export default router;

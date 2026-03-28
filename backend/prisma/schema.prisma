@@ -7,774 +7,758 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- AUTH & USERS ---
+// ==========================================
+// TẦNG 1 — CORE / AUTH
+// ==========================================
+
 model User {
-  id               String               @id @default(uuid())
-  email            String               @unique
-  passwordHash     String?              @map("password_hash")
-  name             String
-  avatarUrl        String?              @map("avatar_url")
-  role             Role                 @default(USER)
-  level            String               @default("Beginner")
-  xp               Int                  @default(0)
-  streak           Int                  @default(0)
-  lives            Int                  @default(5)
-  isPremium        Boolean              @default(false) @map("is_premium")
-  learningGoals    String?              @map("learning_goals")
-  createdAt        DateTime             @default(now()) @map("created_at")
-  oauthAccounts    OAuthAccount[]
-  refreshTokens    RefreshToken[]
-  placementTests   PlacementTest[]
-  courseEnrollments UserCourseEnrollment[]
-  lessonProgress   UserLessonProgress[]
-  exerciseAnswers  UserExerciseAnswer[]
-  vocabSets        VocabSet[]
-  vocabProgress    UserVocabProgress[]
-  badges           UserBadge[]
-  leaderboardEntries LeaderboardEntry[]
-  inventory        UserInventory[]
-  streakRecords    StreakRecord[]
-  examAttempts     UserExamAttempt[]
-  chatSessions     AIChatSession[]
-  writingSubmissions AIWritingSubmission[]
-  pronunciationRecords PronunciationRecord[]
-  forumPosts       ForumPost[]
-  forumComments    ForumComment[]
-  forumLikes       ForumLike[]
-  languageExchange LanguageExchange?
-  challengeParticipants ChallengeParticipant[]
-  subscriptions    UserSubscription[]
-  transactions     PaymentTransaction[]
-  notifications    Notification[]
-  grammarProgress  UserGrammarProgress[]
-  grammarAnswers   UserGrammarAnswer[]
-  listeningProgress UserListeningProgress[]
-  listeningAnswers  UserListeningAnswer[]
-  speakingExercises SpeakingExercise[]
-  writingPrompts    WritingPrompt[]
-  readingProgress   UserReadingProgress[]
-  hasCompletedPlacementTest Boolean @default(false) @map("has_completed_placement_test")
+  id               String    @id @default(uuid()) 
+  email            String    @unique
+  emailVerified    Boolean   @default(false) @map("email_verified")
+  passwordHash     String?   @map("password_hash")
+  fullName         String    @map("full_name")
+  avatarUrl        String?   @map("avatar_url")
+  role             String    @default("student") // 'student', 'tutor', 'admin'
+  plan             String    @default("free")    // 'free', 'premium', 'enterprise'
+  planExpiresAt    DateTime? @map("plan_expires_at") 
+  xp               Int       @default(0)
+  level            String    @default("A1")
+  locale           String    @default("vi")
+  timezone         String    @default("Asia/Ho_Chi_Minh")
+  metadata         Json      @default("{}")
+  deletedAt        DateTime? @map("deleted_at") 
+  createdAt        DateTime  @default(now()) @map("created_at") 
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
+
+  // Relations
+  oauthAccounts        OAuthAccount[]
+  sessions             UserSession[]
+  emailVerifications   EmailVerification[]
+  usageLogs            UsageLog[]
+  flashcardSets        FlashcardSet[]
+  reviewSchedules      ReviewSchedule[]
+  solveHistories       SolveHistory[]
+  examsAssigned        Exam[]
+  examAttempts         ExamAttempt[]
+  lessonProgress       UserLessonProgress[]
+  streaks              UserStreak?
+  notes                Note[]
+  tutorProfile         TutorProfile?
+  studentBookings      Booking[] @relation("StudentBookings")
+  bookingChecks        BookingReview[]
+  quizSets             QuizSet[]
+  quizAttempts         QuizAttempt[]
+  subscriptions        Subscription[]
+  forumPosts           ForumPost[]
+  forumComments        ForumComment[]
+  postLikes            PostLike[]
 
   @@map("users")
 }
 
-enum Role {
-  USER
-  ADMIN
-}
-
 model OAuthAccount {
-  id           String @id @default(uuid())
-  userId       String @map("user_id")
-  provider     String
-  providerId   String @map("provider_id")
-  accessToken  String? @map("access_token")
-  user         User   @relation(fields: [userId], references: [id])
+  id               String    @id @default(uuid()) 
+  userId           String    @map("user_id") 
+  provider         String    // 'google', 'facebook', 'github'
+  providerUid      String    @map("provider_uid")
+  accessToken      String?   @map("access_token")
+  refreshToken     String?   @map("refresh_token")
+  tokenExpiresAt   DateTime? @map("token_expires_at") 
+  rawProfile       Json      @default("{}") @map("raw_profile")
+  createdAt        DateTime  @default(now()) @map("created_at") 
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
 
-  @@map("oauth_accounts")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUid])
+  @@map("user_oauth_accounts")
 }
 
-model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  token     String   @unique
-  expiresAt DateTime @map("expires_at")
-  user      User     @relation(fields: [userId], references: [id])
+model UserSession {
+  id               String    @id @default(uuid()) 
+  userId           String    @map("user_id") 
+  refreshToken     String    @unique @map("refresh_token")
+  ipAddress        String?   @map("ip_address")
+  userAgent        String?   @map("user_agent")
+  lastActiveAt     DateTime  @default(now()) @map("last_active_at") 
+  expiresAt        DateTime  @map("expires_at") 
+  revokedAt        DateTime? @map("revoked_at") 
+  createdAt        DateTime  @default(now()) @map("created_at") 
 
-  @@map("refresh_tokens")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
 }
 
-model PlacementTest {
-  id           String   @id @default(uuid())
-  userId       String   @map("user_id")
-  score        Int
-  levelResult  String   @map("level_result")
-  completedAt  DateTime @default(now()) @map("completed_at")
-  user         User     @relation(fields: [userId], references: [id])
+model EmailVerification {
+  id               String    @id @default(uuid()) 
+  userId           String    @map("user_id") 
+  token            String    @unique
+  type             String    // 'verify_email', 'reset_password'
+  expiresAt        DateTime  @map("expires_at") 
+  usedAt           DateTime? @map("used_at") 
+  createdAt        DateTime  @default(now()) @map("created_at") 
 
-  @@map("placement_tests")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verifications")
 }
 
-// --- COURSES & LEARNING PATH ---
-model Course {
-  id              String               @id @default(uuid())
-  title           String
-  description     String?
-  level           String
-  category        String
-  thumbnail       String?
-  isFree          Boolean              @default(true) @map("is_free")
-  orderIndex      Int                  @map("order_index")
-  units           Unit[]
-  enrollments     UserCourseEnrollment[]
+model UsageLog {
+  id               String    @id @default(uuid()) 
+  userId           String    @map("user_id") 
+  module           String    // 'flashcard', 'solver', 'exam', 'microlearn', 'note', 'quiz'
+  action           String    // 'generate', 'solve', 'summarize'
+  tokensUsed       Int       @default(0) @map("tokens_used")
+  metadata         Json      @default("{}")
+  createdAt        DateTime  @default(now()) @map("created_at") 
 
-  @@map("courses")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("usage_logs")
 }
 
-model Unit {
-  id          String   @id @default(uuid())
-  courseId    String   @map("course_id")
-  title       String
-  description String?
-  orderIndex  Int      @map("order_index")
-  course      Course   @relation(fields: [courseId], references: [id])
-  lessons     Lesson[]
+// ==========================================
+// TẦNG 2 — MODULE 1: FLASHCARD
+// ==========================================
 
-  @@map("units")
+model FlashcardSet {
+  id               String    @id @default(uuid()) 
+  userId           String    @map("user_id") 
+  title            String
+  description      String?
+  subject          String?
+  sourceType       String?   @map("source_type") // 'pdf', 'text', 'manual'
+  sourceUrl        String?   @map("source_url")
+  cardCount        Int       @default(0) @map("card_count")
+  isPublic         Boolean   @default(false) @map("is_public")
+  deletedAt        DateTime? @map("deleted_at") 
+  createdAt        DateTime  @default(now()) @map("created_at") 
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flashcards       Flashcard[]
+
+  @@map("flashcard_sets")
 }
 
-model Lesson {
-  id              String               @id @default(uuid())
-  unitId          String               @map("unit_id")
-  title           String
-  type            String
-  contentJson     Json                 @map("content_json")
-  durationMinutes Int                  @map("duration_minutes")
-  xpReward        Int                  @default(0) @map("xp_reward")
-  orderIndex      Int                  @map("order_index")
-  unit            Unit                 @relation(fields: [unitId], references: [id])
-  exercises       Exercise[]
-  userProgress    UserLessonProgress[]
+model Flashcard {
+  id               String    @id @default(uuid()) 
+  setId            String    @map("set_id") 
+  front            String    
+  back             String    
+  hint             String?
+  imageUrl         String?   @map("image_url")
+  audioUrl         String?   @map("audio_url")
+  sortOrder        Int       @default(0) @map("sort_order")
+  createdAt        DateTime  @default(now()) @map("created_at") 
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
 
-  @@map("lessons")
+  set              FlashcardSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  reviewSchedules  ReviewSchedule[]
+
+  @@map("flashcards")
 }
 
-model Exercise {
-  id            String               @id @default(uuid())
-  lessonId      String               @map("lesson_id")
-  type          String
-  question      String
-  optionsJson   Json?                @map("options_json")
-  correctAnswer String               @map("correct_answer")
-  explanation   String?
-  orderIndex    Int                  @map("order_index")
-  lesson        Lesson               @relation(fields: [lessonId], references: [id])
-  userAnswers   UserExerciseAnswer[]
+model ReviewSchedule {
+  id               String    @id @default(uuid()) 
+  userId           String    @map("user_id") 
+  flashcardId      String    @map("flashcard_id") 
+  
+  repetition       Int       @default(0)
+  easinessFactor   Decimal   @default(2.5)  @map("easiness_factor")
+  intervalDays     Int       @default(1) @map("interval_days")
+  nextReviewAt     DateTime  @default(now()) @map("next_review_at") 
+  lastReviewedAt   DateTime? @map("last_reviewed_at") 
+  lastQuality      Int?      @map("last_quality")
 
-  @@map("exercises")
+  createdAt        DateTime  @default(now()) @map("created_at") 
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flashcard        Flashcard @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, flashcardId])
+  @@index([userId, nextReviewAt])
+  @@map("review_schedules")
 }
 
-model UserCourseEnrollment {
-  id              String   @id @default(uuid())
-  userId          String   @map("user_id")
-  courseId        String   @map("course_id")
-  enrolledAt      DateTime @default(now()) @map("enrolled_at")
-  progressPercent Float    @default(0) @map("progress_percent")
-  lastStudiedAt   DateTime @default(now()) @map("last_studied_at")
-  user            User     @relation(fields: [userId], references: [id])
-  course          Course   @relation(fields: [courseId], references: [id])
+// ==========================================
+// TẦNG 2 — MODULE 2: GIẢI BÀI
+// ==========================================
 
-  @@map("user_course_enrollments")
+model SolveHistory {
+  id               String    @id @default(uuid()) 
+  userId           String    @map("user_id") 
+  subject          String
+  gradeLevel       String?   @map("grade_level")
+  questionText     String     @map("question_text")
+  questionImageUrl String?   @map("question_image_url")
+  answerText       String     @map("answer_text")
+  answerHtml       String?    @map("answer_html")
+  tokensUsed       Int       @default(0) @map("tokens_used")
+  modelUsed        String    @default("gemini-1.5-pro") @map("model_used")
+  isSaved          Boolean   @default(false) @map("is_saved")
+  rating           Int?
+  deletedAt        DateTime? @map("deleted_at") 
+  createdAt        DateTime  @default(now()) @map("created_at") 
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("solve_histories")
 }
 
-model UserLessonProgress {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  lessonId    String   @map("lesson_id")
-  status      String   // COMPLETED, IN_PROGRESS
-  score       Int?
-  attempts    Int      @default(0)
-  completedAt DateTime? @map("completed_at")
-  user        User     @relation(fields: [userId], references: [id])
-  lesson      Lesson   @relation(fields: [lessonId], references: [id])
+// ==========================================
+// TẦNG 2 — MODULE 3: LUYỆN ĐỀ
+// ==========================================
 
-  @@map("user_lesson_progress")
-}
+model Exam {
+  id               String    @id @default(uuid()) 
+  creatorId        String?   @map("creator_id") 
+  title            String
+  description      String?   
+  subject          String
+  gradeLevel       String?   @map("grade_level")
+  durationMinutes  Int       @default(45) @map("duration_minutes")
+  totalQuestions   Int       @default(0) @map("total_questions")
+  totalPoints      Decimal   @default(0)  @map("total_points")
+  isAiGenerated    Boolean   @default(false) @map("is_ai_generated")
+  isPublic         Boolean   @default(true) @map("is_public")
+  passScore        Decimal?   @map("pass_score")
+  deletedAt        DateTime? @map("deleted_at") 
+  createdAt        DateTime  @default(now()) @map("created_at") 
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
 
-model UserExerciseAnswer {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  exerciseId  String   @map("exercise_id")
-  answer      String
-  isCorrect   Boolean  @map("is_correct")
-  answeredAt  DateTime @default(now()) @map("answered_at")
-  user        User     @relation(fields: [userId], references: [id])
-  exercise    Exercise @relation(fields: [exerciseId], references: [id])
+  creator          User?     @relation(fields: [creatorId], references: [id], onDelete: SetNull)
+  questions        ExamQuestion[]
+  attempts         ExamAttempt[]
 
-  @@map("user_exercise_answers")
-}
-
-// --- VOCABULARY ---
-model VocabWord {
-  id           String               @id @default(uuid())
-  word         String
-  phonetic     String?
-  definition   String
-  examplesJson Json?                @map("examples_json")
-  audioUrl     String?              @map("audio_url")
-  imageUrl     String?              @map("image_url")
-  level        String
-  topic        String
-  setWords     VocabSetWord[]
-  userProgress UserVocabProgress[]
-
-  @@map("vocab_words")
-}
-
-model VocabSet {
-  id          String         @id @default(uuid())
-  userId      String         @map("user_id")
-  title       String
-  description String?
-  isPublic    Boolean        @default(false) @map("is_public")
-  user        User           @relation(fields: [userId], references: [id])
-  setWords    VocabSetWord[]
-
-  @@map("vocab_sets")
-}
-
-model VocabSetWord {
-  id         String    @id @default(uuid())
-  setId      String    @map("set_id")
-  wordId     String    @map("word_id")
-  orderIndex Int       @map("order_index")
-  set        VocabSet  @relation(fields: [setId], references: [id])
-  word       VocabWord @relation(fields: [wordId], references: [id])
-
-  @@map("vocab_set_words")
-}
-
-model UserVocabProgress {
-  id          String    @id @default(uuid())
-  userId      String    @map("user_id")
-  wordId      String    @map("word_id")
-  easeFactor  Float     @default(2.5) @map("ease_factor")
-  interval    Int       @default(0)
-  nextReview  DateTime  @default(now()) @map("next_review")
-  repetitions Int       @default(0)
-  user        User      @relation(fields: [userId], references: [id])
-  word        VocabWord @relation(fields: [wordId], references: [id])
-
-  @@unique([userId, wordId])
-  @@map("user_vocab_progress")
-}
-
-// --- GRAMMAR ---
-model GrammarTopic {
-  id           String            @id @default(uuid())
-  title        String
-  description  String?
-  level        String
-  contentJson  Json              @map("content_json") // Structured lesson content
-  orderIndex   Int               @map("order_index")
-  exercises    GrammarExercise[]
-  userProgress UserGrammarProgress[]
-
-  @@map("grammar_topics")
-}
-
-model GrammarExercise {
-  id            String               @id @default(uuid())
-  topicId       String               @map("topic_id")
-  type          String               // MULTIPLE_CHOICE, FILL_IN_BLANK, REORDER, ERROR_CORRECTION, TRANSFORMATION
-  question      String
-  optionsJson   Json?                @map("options_json")
-  correctAnswer String               @map("correct_answer")
-  explanation   String?
-  orderIndex    Int                  @map("order_index")
-  topic         GrammarTopic         @relation(fields: [topicId], references: [id])
-  userAnswers   UserGrammarAnswer[]
-
-  @@map("grammar_exercises")
-}
-
-model UserGrammarProgress {
-  id          String       @id @default(uuid())
-  userId      String       @map("user_id")
-  topicId     String       @map("topic_id")
-  status      String       // NOT_STARTED, IN_PROGRESS, COMPLETED
-  lastStudied DateTime     @default(now()) @map("last_studied")
-  user        User         @relation(fields: [userId], references: [id])
-  topic       GrammarTopic @relation(fields: [topicId], references: [id])
-
-  @@unique([userId, topicId])
-  @@map("user_grammar_progress")
-}
-
-model UserGrammarAnswer {
-  id          String          @id @default(uuid())
-  userId      String          @map("user_id")
-  exerciseId  String          @map("exercise_id")
-  answer      String
-  isCorrect   Boolean         @map("is_correct")
-  answeredAt  DateTime        @default(now()) @map("answered_at")
-  user        User            @relation(fields: [userId], references: [id])
-  exercise    GrammarExercise @relation(fields: [exerciseId], references: [id])
-
-  @@map("user_grammar_answers")
-}
-
-// --- LISTENING ---
-model ListeningExercise {
-  id           String            @id @default(uuid())
-  title        String
-  description  String?
-  level        String
-  topic        String
-  audioUrl     String            @map("audio_url")
-  transcript   String?           // Full transcript
-  durationSec  Int               @map("duration_sec")
-  thumbnail    String?
-  orderIndex   Int               @map("order_index")
-  questions    ListeningQuestion[]
-  userProgress UserListeningProgress[]
-
-  @@map("listening_exercises")
-}
-
-model ListeningQuestion {
-  id            String            @id @default(uuid())
-  exerciseId    String            @map("exercise_id")
-  type          String            // MULTIPLE_CHOICE, FILL_IN_BLANK, TRUE_FALSE, MATCHING, NOTE_COMPLETION
-  questionText  String            @map("question_text")
-  optionsJson   Json?             @map("options_json")
-  correctAnswer String            @map("correct_answer")
-  explanation   String?
-  orderIndex    Int               @map("order_index")
-  exercise      ListeningExercise @relation(fields: [exerciseId], references: [id])
-  userAnswers   UserListeningAnswer[]
-
-  @@map("listening_questions")
-}
-
-model UserListeningProgress {
-  id          String            @id @default(uuid())
-  userId      String            @map("user_id")
-  exerciseId  String            @map("exercise_id")
-  status      String            // NOT_STARTED, IN_PROGRESS, COMPLETED
-  score       Float?
-  lastStudied DateTime          @default(now()) @map("last_studied")
-  user        User              @relation(fields: [userId], references: [id])
-  exercise    ListeningExercise @relation(fields: [exerciseId], references: [id])
-
-  @@unique([userId, exerciseId])
-  @@map("user_listening_progress")
-}
-
-model UserListeningAnswer {
-  id          String            @id @default(uuid())
-  userId      String            @map("user_id")
-  questionId  String            @map("question_id")
-  answer      String
-  isCorrect   Boolean           @map("is_correct")
-  answeredAt  DateTime          @default(now()) @map("answered_at")
-  user        User              @relation(fields: [userId], references: [id])
-  question    ListeningQuestion @relation(fields: [questionId], references: [id])
-
-  @@map("user_listening_answers")
-}
-
-// --- SPEAKING ---
-model SpeakingExercise {
-  id           String            @id @default(uuid())
-  title        String
-  description  String?
-  level        String
-  type         String            // PRONUNCIATION, READ_ALOUD, DESCRIBE_IMAGE, QUESTION_ANSWER
-  targetText   String            @map("target_text")
-  phonetic     String?
-  audioUrl     String?           @map("audio_url") // Sample natural audio
-  imageUrl     String?           @map("image_url") // For Describe Image
-  orderIndex   Int               @map("order_index")
-  creatorId    String?           @map("creator_id")
-  creator      User?             @relation(fields: [creatorId], references: [id])
-  userRecords  PronunciationRecord[]
-
-  @@map("speaking_exercises")
-}
-
-model WritingPrompt {
-  id           String            @id @default(uuid())
-  title        String
-  description  String?           // General context
-  requirements String?           // Specific rules (e.g. min 250 words)
-  type         String            // EMAIL, ESSAY, IELTS_TASK_1, IELTS_TASK_2, PARAGRAPH
-  level        String
-  topic        String
-  tipsJson     Json?             @map("tips_json") // Detailed guidance
-  exampleText  String?           @map("example_text") // Model answer
-  targetWords  Int               @default(150) @map("target_words")
-  orderIndex   Int               @map("order_index")
-  creatorId    String?           @map("creator_id")
-  creator      User?             @relation(fields: [creatorId], references: [id])
-  submissions  AIWritingSubmission[]
-
-  @@map("writing_prompts")
-}
-
-// --- GAMIFICATION ---
-model Badge {
-  id             String      @id @default(uuid())
-  name           String
-  description    String?
-  iconUrl        String?     @map("icon_url")
-  conditionType  String      @map("condition_type")
-  conditionValue Int         @map("condition_value")
-  userBadges     UserBadge[]
-
-  @@map("badges")
-}
-
-model UserBadge {
-  id       String   @id @default(uuid())
-  userId   String   @map("user_id")
-  badgeId  String   @map("badge_id")
-  earnedAt DateTime @default(now()) @map("earned_at")
-  user     User     @relation(fields: [userId], references: [id])
-  badge    Badge    @relation(fields: [badgeId], references: [id])
-
-  @@map("user_badges")
-}
-
-model LeaderboardEntry {
-  id           String   @id @default(uuid())
-  userId       String   @map("user_id")
-  periodType   String   @map("period_type") // WEEKLY, MONTHLY
-  xpEarned     Int      @map("xp_earned")
-  rank         Int?
-  periodStart  DateTime @map("period_start")
-  user         User     @relation(fields: [userId], references: [id])
-
-  @@map("leaderboard_entries")
-}
-
-model ShopItem {
-  id          String          @id @default(uuid())
-  name        String
-  type        String
-  description String?
-  iconUrl     String?         @map("icon_url")
-  priceXp     Int?            @map("price_xp")
-  priceCoins  Int?            @map("price_coins")
-  inventory   UserInventory[]
-
-  @@map("shop_items")
-}
-
-model UserInventory {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  itemId      String   @map("item_id")
-  purchasedAt DateTime @default(now()) @map("purchased_at")
-  isActive    Boolean  @default(false) @map("is_active")
-  user        User     @relation(fields: [userId], references: [id])
-  item        ShopItem @relation(fields: [itemId], references: [id])
-
-  @@map("user_inventory")
-}
-
-model StreakRecord {
-  id                String   @id @default(uuid())
-  userId            String   @map("user_id")
-  currentStreak     Int      @default(0) @map("current_streak")
-  longestStreak     Int      @default(0) @map("longest_streak")
-  lastActivityDate  DateTime @default(now()) @map("last_activity_date")
-  user              User     @relation(fields: [userId], references: [id])
-
-  @@map("streak_records")
-}
-
-// --- EXAMS ---
-model ExamSet {
-  id              String             @id @default(uuid())
-  title           String
-  type            String             // IELTS, TOEIC, TOEFL
-  level           String
-  durationMinutes Int                @map("duration_minutes")
-  isPremium       Boolean            @default(false) @map("is_premium")
-  questions       ExamQuestion[]
-  attempts        UserExamAttempt[]
-
-  @@map("exam_sets")
+  @@map("exams")
 }
 
 model ExamQuestion {
-  id           String           @id @default(uuid())
-  examSetId    String           @map("exam_set_id")
-  skill        String           // LISTENING, READING, WRITING, SPEAKING
-  questionText String?          @map("question_text")
-  audioUrl     String?          @map("audio_url")
-  optionsJson  Json?            @map("options_json")
-  correctAnswer String?          @map("correct_answer")
-  orderIndex   Int              @map("order_index")
-  examSet      ExamSet          @relation(fields: [examSetId], references: [id])
-  userAnswers  UserExamAnswer[]
+  id               String    @id @default(uuid()) 
+  examId           String    @map("exam_id") 
+  questionText     String     @map("question_text")
+  questionImageUrl String?   @map("question_image_url")
+  questionType     String    @default("single_choice") @map("question_type") // 'single_choice', 'multi_choice', 'true_false', 'fill_blank'
+  options          Json?     @default("[]")
+  correctAnswers   Json      @map("correct_answers")
+  explanation      String?   
+  points           Decimal   @default(1) 
+  difficulty       String?   // 'easy', 'medium', 'hard'
+  topicTag         String?   @map("topic_tag")
+  sortOrder        Int       @default(0) @map("sort_order")
+  createdAt        DateTime  @default(now()) @map("created_at") 
+
+  exam             Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
+  attemptAnswers   AttemptAnswer[]
 
   @@map("exam_questions")
 }
 
-model UserExamAttempt {
-  id          String           @id @default(uuid())
-  userId      String           @map("user_id")
-  examSetId   String           @map("exam_set_id")
-  startedAt   DateTime         @default(now()) @map("started_at")
-  submittedAt DateTime?        @map("submitted_at")
-  scoreJson   Json?            @map("score_json")
-  totalScore  Float?           @map("total_score")
-  user        User             @relation(fields: [userId], references: [id])
-  examSet     ExamSet          @relation(fields: [examSetId], references: [id])
-  userAnswers UserExamAnswer[]
+model ExamAttempt {
+  id               String    @id @default(uuid()) 
+  examId           String    @map("exam_id") 
+  userId           String    @map("user_id") 
+  status           String    @default("in_progress") // 'in_progress', 'submitted', 'timeout'
+  startedAt        DateTime  @default(now()) @map("started_at") 
+  submittedAt      DateTime? @map("submitted_at") 
+  timeSpentSec     Int?      @map("time_spent_sec")
+  score            Decimal?  
+  maxScore         Decimal?   @map("max_score")
+  percentage       Decimal?  
+  passed           Boolean?
+  analysis         Json?
+  createdAt        DateTime  @default(now()) @map("created_at") 
 
-  @@map("user_exam_attempts")
+  exam             Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers          AttemptAnswer[]
+
+  @@map("exam_attempts")
 }
 
-model UserExamAnswer {
-  id           String          @id @default(uuid())
-  attemptId    String          @map("attempt_id")
-  questionId   String          @map("question_id")
-  userAnswer   String?         @map("user_answer")
-  isCorrect    Boolean?        @map("is_correct")
-  timeSpent    Int?            @map("time_spent")
-  attempt      UserExamAttempt @relation(fields: [attemptId], references: [id])
-  question     ExamQuestion    @relation(fields: [questionId], references: [id])
+model AttemptAnswer {
+  id               String    @id @default(uuid()) 
+  attemptId        String    @map("attempt_id") 
+  questionId       String    @map("question_id") 
+  selectedAnswers  Json      @default("[]") @map("selected_answers")
+  isCorrect        Boolean?  @map("is_correct")
+  pointsEarned     Decimal   @default(0)  @map("points_earned")
+  timeSpentSec     Int?      @map("time_spent_sec")
+  createdAt        DateTime  @default(now()) @map("created_at") 
 
-  @@map("user_exam_answers")
+  attempt          ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question         ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@map("attempt_answers")
 }
 
-// --- AI ---
-model AIChatSession {
-  id           String   @id @default(uuid())
-  userId       String   @map("user_id")
-  scenario     String
-  messagesJson Json     @map("messages_json")
-  createdAt    DateTime @default(now()) @map("created_at")
-  user         User     @relation(fields: [userId], references: [id])
+// ==========================================
+// TẦNG 2 — MODULE 4: MICRO-LEARNING
+// ==========================================
 
-  @@map("ai_chat_sessions")
+model LearningTopic {
+  id               String    @id @default(uuid()) 
+  name             String
+  slug             String    @unique
+  iconUrl          String?   @map("icon_url")
+  description      String?   
+  lessonCount      Int       @default(0) @map("lesson_count")
+  isActive         Boolean   @default(true) @map("is_active")
+  sortOrder        Int       @default(0) @map("sort_order")
+  createdAt        DateTime  @default(now()) @map("created_at") 
+
+  lessons          DailyLesson[]
+  userProgress     UserLessonProgress[]
+
+  @@map("learning_topics")
 }
 
-model AIWritingSubmission {
-  id           String   @id @default(uuid())
-  userId       String   @map("user_id")
-  promptId     String?  @map("prompt_id")
-  prompt       String?  // Original prompt text if not linked to structured prompt
-  content      String
-  feedbackJson Json?    @map("feedback_json") // { overallScore, grammar, vocab, coherence, task, highlightedErrors: [], suggestions: [] }
-  score        Float?
-  submittedAt  DateTime @default(now()) @map("submitted_at")
-  user         User     @relation(fields: [userId], references: [id])
-  writingPrompt WritingPrompt? @relation(fields: [promptId], references: [id])
+model DailyLesson {
+  id               String    @id @default(uuid()) 
+  topicId          String    @map("topic_id") 
+  title            String
+  content          String    
+  contentHtml      String?    @map("content_html")
+  estimatedMinutes Int       @default(5) @map("estimated_minutes")
+  lessonDate       DateTime?  @map("lesson_date")
+  dayIndex         Int?      @map("day_index")
+  isPremium        Boolean   @default(false) @map("is_premium")
+  quizQuestion     Json?     @map("quiz_question")
+  createdAt        DateTime  @default(now()) @map("created_at") 
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
 
-  @@map("ai_writing_submissions")
+  topic            LearningTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  userProgress     UserLessonProgress[]
+
+  @@map("daily_lessons")
 }
 
-model PronunciationRecord {
-  id             String   @id @default(uuid())
-  userId         String   @map("user_id")
-  wordOrSentence String   @map("word_or_sentence")
-  audioUrl       String?  @map("audio_url")
-  score          Float?
-  feedbackJson   Json?    @map("feedback_json")
-  recordedAt     DateTime @default(now()) @map("recorded_at")
-  exerciseId     String?  @map("exercise_id")
-  user           User     @relation(fields: [userId], references: [id])
-  exercise       SpeakingExercise? @relation(fields: [exerciseId], references: [id])
+model UserLessonProgress {
+  id               String    @id @default(uuid()) 
+  userId           String    @map("user_id") 
+  lessonId         String    @map("lesson_id") 
+  topicId          String    @map("topic_id") 
+  status           String    @default("not_started") // 'not_started', 'in_progress', 'completed'
+  quizAnswered     Boolean   @default(false) @map("quiz_answered")
+  quizCorrect      Boolean?  @map("quiz_correct")
+  completedAt      DateTime? @map("completed_at") 
+  createdAt        DateTime  @default(now()) @map("created_at") 
 
-  @@map("pronunciation_records")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson           DailyLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  topic            LearningTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("user_lesson_progress")
 }
 
-// --- COMMUNITY ---
+model UserStreak {
+  id               String    @id @default(uuid()) 
+  userId           String    @unique @map("user_id") 
+  currentStreak    Int       @default(0) @map("current_streak")
+  longestStreak    Int       @default(0) @map("longest_streak")
+  lastActivityDate DateTime?  @map("last_activity_date")
+  totalDaysLearned Int       @default(0) @map("total_days_learned")
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_streaks")
+}
+
+// ==========================================
+// TẦNG 2 — MODULE 5: AI NOTE & SUMMARY
+// ==========================================
+
+model Note {
+  id               String    @id @default(uuid()) 
+  userId           String    @map("user_id") 
+  title            String    @default("Untitled Note")
+  sourceType       String?   @map("source_type") // 'text', 'pdf', 'url', 'docx'
+  sourceContent    String?    @map("source_content")
+  sourceUrl        String?   @map("source_url")
+  wordCount        Int?      @map("word_count")
+  tags             String[]  @default([])
+  isPinned         Boolean   @default(false) @map("is_pinned")
+  deletedAt        DateTime? @map("deleted_at") 
+  createdAt        DateTime  @default(now()) @map("created_at") 
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summaries        NoteSummary[]
+
+  @@map("notes")
+}
+
+model NoteSummary {
+  id               String    @id @default(uuid()) 
+  noteId           String    @map("note_id") 
+  summaryShort     String     @map("summary_short")
+  bulletPoints     Json      @default("[]") @map("bullet_points")
+  keywords         String[]  @default([])
+  fullSummary      String?    @map("full_summary")
+  modelUsed        String    @default("gemini-1.5-pro") @map("model_used")
+  tokensUsed       Int       @default(0) @map("tokens_used")
+  createdAt        DateTime  @default(now()) @map("created_at") 
+
+  note             Note      @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@map("note_summaries")
+}
+
+// ==========================================
+// TẦNG 2 — MODULE 6: TUTOR MARKETPLACE
+// ==========================================
+
+model TutorProfile {
+  id               String    @id @default(uuid()) 
+  userId           String    @unique @map("user_id") 
+  bio              String?   
+  education        String?   
+  experienceYears  Int       @default(0) @map("experience_years")
+  hourlyRateVnd    Int       @map("hourly_rate_vnd")
+  hourlyRateMin    Int?      @map("hourly_rate_min")
+  teachingStyle    String?    @map("teaching_style")
+  certifications   Json      @default("[]")
+  videoIntroUrl    String?   @map("video_intro_url")
+  ratingAvg        Decimal   @default(0.00) @map("rating_avg")
+  reviewCount      Int       @default(0) @map("review_count")
+  totalSessions    Int       @default(0) @map("total_sessions")
+  isVerified       Boolean   @default(false) @map("is_verified")
+  isAvailable      Boolean   @default(true) @map("is_available")
+  status           String    @default("pending") // 'pending', 'approved', 'suspended'
+  deletedAt        DateTime? @map("deleted_at") 
+  createdAt        DateTime  @default(now()) @map("created_at") 
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects         TutorSubject[]
+  availabilities   TutorAvailability[]
+  bookings         Booking[] @relation("TutorBookings")
+  reviews          BookingReview[]
+
+  @@map("tutor_profiles")
+}
+
+model TutorSubject {
+  id               String    @id @default(uuid()) 
+  tutorId          String    @map("tutor_id") 
+  subject          String
+  gradeLevels      String[]  @default([]) @map("grade_levels")
+  proficiency      String    @default("advanced") // 'intermediate', 'advanced', 'expert'
+  createdAt        DateTime  @default(now()) @map("created_at") 
+
+  tutor            TutorProfile @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@unique([tutorId, subject])
+  @@map("tutor_subjects")
+}
+
+model TutorAvailability {
+  id               String    @id @default(uuid()) 
+  tutorId          String    @map("tutor_id") 
+  dayOfWeek        Int       @map("day_of_week") // 0=Sunday, 6=Saturday
+  startTime        DateTime   @map("start_time")
+  endTime          DateTime   @map("end_time")
+  isActive         Boolean   @default(true) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at") 
+
+  tutor            TutorProfile @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@map("tutor_availabilities")
+}
+
+model Booking {
+  id               String    @id @default(uuid()) 
+  studentId        String    @map("student_id") 
+  tutorId          String    @map("tutor_id") 
+  subject          String
+  gradeLevel       String?   @map("grade_level")
+  sessionDate      DateTime   @map("session_date")
+  startTime        DateTime   @map("start_time")
+  endTime          DateTime   @map("end_time")
+  durationMinutes  Int       @map("duration_minutes")
+  platform         String    @default("google_meet") // 'google_meet', 'zoom', 'zalo', 'other'
+  meetingUrl       String?   @map("meeting_url")
+  notes            String?   
+  
+  // Finance
+  priceVnd         Int       @map("price_vnd")
+  commissionRate   Decimal   @default(0.12)  @map("commission_rate")
+  commissionVnd    Int       @map("commission_vnd")
+  tutorPayoutVnd   Int       @map("tutor_payout_vnd")
+
+  // Status
+  status           String    @default("pending") // 'pending', 'confirmed', 'completed', 'cancelled', 'no_show'
+  cancelledById    String?   @map("cancelled_by") 
+  cancelledAt      DateTime? @map("cancelled_at") 
+  cancelReason     String?    @map("cancel_reason")
+  completedAt      DateTime? @map("completed_at") 
+
+  createdAt        DateTime  @default(now()) @map("created_at") 
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
+
+  student          User      @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
+  tutor            TutorProfile @relation("TutorBookings", fields: [tutorId], references: [id], onDelete: Cascade)
+  review           BookingReview?
+
+  @@map("bookings")
+}
+
+model BookingReview {
+  id               String    @id @default(uuid()) 
+  bookingId        String    @unique @map("booking_id") 
+  reviewerId       String    @map("reviewer_id") 
+  tutorId          String    @map("tutor_id") 
+  rating           Int       
+  comment          String?   
+  isPublic         Boolean   @default(true) @map("is_public")
+  createdAt        DateTime  @default(now()) @map("created_at") 
+
+  booking          Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  reviewer         User      @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  tutor            TutorProfile @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@map("booking_reviews")
+}
+
+// ==========================================
+// TẦNG 2 — MODULE 7: QUIZ GENERATOR
+// ==========================================
+
+model QuizSet {
+  id               String    @id @default(uuid()) 
+  userId           String    @map("user_id") 
+  title            String
+  description      String?   
+  sourceType       String?   @map("source_type") // 'text', 'pdf', 'manual'
+  sourceUrl        String?   @map("source_url")
+  questionCount    Int       @default(0) @map("question_count")
+  difficulty       String?   // 'easy', 'medium', 'hard', 'mixed'
+  isPublic         Boolean   @default(false) @map("is_public")
+  shareToken       String?   @unique @map("share_token")
+  playCount        Int       @default(0) @map("play_count")
+  deletedAt        DateTime? @map("deleted_at") 
+  createdAt        DateTime  @default(now()) @map("created_at") 
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions        QuizQuestion[]
+  attempts         QuizAttempt[]
+
+  @@map("quiz_sets")
+}
+
+model QuizQuestion {
+  id               String    @id @default(uuid()) 
+  quizId           String    @map("quiz_id") 
+  questionText     String     @map("question_text")
+  questionType     String    @default("single_choice") @map("question_type") // 'single_choice', 'true_false', 'fill_blank'
+  options          Json?     @default("[]")
+  correctAnswers   Json      @map("correct_answers")
+  explanation      String?   
+  points           Int       @default(1)
+  sortOrder        Int       @default(0) @map("sort_order")
+  createdAt        DateTime  @default(now()) @map("created_at") 
+
+  quiz             QuizSet   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers          QuizAnswer[]
+
+  @@map("quiz_questions")
+}
+
+model QuizAttempt {
+  id               String    @id @default(uuid()) 
+  quizId           String    @map("quiz_id") 
+  userId           String?   @map("user_id") 
+  guestName        String?   @map("guest_name")
+  status           String    @default("in_progress") // 'in_progress', 'completed'
+  score            Int       @default(0)
+  maxScore         Int       @default(0) @map("max_score")
+  percentage       Decimal?  
+  timeSpentSec     Int?      @map("time_spent_sec")
+  completedAt      DateTime? @map("completed_at") 
+  createdAt        DateTime  @default(now()) @map("created_at") 
+
+  quiz             QuizSet   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user             User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  answers          QuizAnswer[]
+
+  @@map("quiz_attempts")
+}
+
+model QuizAnswer {
+  id               String    @id @default(uuid()) 
+  attemptId        String    @map("attempt_id") 
+  questionId       String    @map("question_id") 
+  selectedAnswers  Json      @default("[]") @map("selected_answers")
+  isCorrect        Boolean?  @map("is_correct")
+  pointsEarned     Int       @default(0) @map("points_earned")
+  createdAt        DateTime  @default(now()) @map("created_at") 
+
+  attempt          QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question         QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@map("quiz_answers")
+}
+
+// ==========================================
+// TẦNG 3 — BILLING & SUBSCRIPTION
+// ==========================================
+
+model SubscriptionPlan {
+  id               String    @id @default(uuid()) 
+  name             String    @unique // 'free', 'premium_monthly', 'premium_yearly'
+  displayName      String    @map("display_name")
+  priceVnd         Int       @default(0) @map("price_vnd")
+  billingCycle     String?   @map("billing_cycle") // 'monthly', 'yearly', 'lifetime'
+  features         Json      @default("{}")
+  isActive         Boolean   @default(true) @map("is_active")
+  sortOrder        Int       @default(0) @map("sort_order")
+  createdAt        DateTime  @default(now()) @map("created_at") 
+
+  subscriptions    Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id               String    @id @default(uuid()) 
+  userId           String    @map("user_id") 
+  planId           String    @map("plan_id") 
+  status           String    @default("active") // 'active', 'cancelled', 'expired'
+  startedAt        DateTime  @default(now()) @map("started_at") 
+  expiresAt        DateTime? @map("expires_at") 
+  cancelledAt      DateTime? @map("cancelled_at") 
+  createdAt        DateTime  @default(now()) @map("created_at") 
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan             SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
+}
+
+// ==========================================
+// THÊM: Thông báo & Notifications
+// ==========================================
+
+model Notification {
+  id               String    @id @default(uuid()) 
+  userId           String    @map("user_id") 
+  type             String    
+  title            String
+  body             String?   
+  isRead           Boolean   @default(false) @map("is_read")
+  createdAt        DateTime  @default(now()) @map("created_at") 
+
+  @@map("notifications")
+}
+
+// ==========================================
+// TẦNG 4 — FORUM (CỘNG ĐỒNG)
+// ==========================================
+
 model ForumCategory {
-  id          String      @id @default(uuid())
-  name        String
-  slug        String      @unique
-  description String?
-  icon        String?
-  posts       ForumPost[]
+  id               String    @id @default(uuid()) 
+  name             String
+  slug             String    @unique
+  description      String?
+  icon             String?
+  color            String?   @default("blue")
+  sortOrder        Int       @default(0) @map("sort_order")
+  isActive         Boolean   @default(true) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at") 
+
+  posts            ForumPost[]
 
   @@map("forum_categories")
 }
 
 model ForumPost {
-  id          String         @id @default(uuid())
-  userId      String         @map("user_id")
-  categoryId  String         @map("category_id")
-  title       String
-  content     String
-  views       Int            @default(0)
-  isPinned    Boolean        @default(false) @map("is_pinned")
-  createdAt   DateTime       @default(now()) @map("created_at")
-  user        User           @relation(fields: [userId], references: [id])
-  category    ForumCategory  @relation(fields: [categoryId], references: [id])
-  comments    ForumComment[]
-  likes       ForumLike[]
+  id               String    @id @default(uuid()) 
+  categoryId       String    @map("category_id")
+  authorId         String    @map("author_id")
+  title            String
+  content          String
+  contentHtml      String?   @map("content_html")
+  viewCount        Int       @default(0) @map("view_count")
+  upvotes          Int       @default(0)
+  downvotes        Int       @default(0)
+  isPinned         Boolean   @default(false) @map("is_pinned")
+  isResolved       Boolean   @default(false) @map("is_resolved")
+  deletedAt        DateTime? @map("deleted_at") 
+  createdAt        DateTime  @default(now()) @map("created_at") 
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
+
+  category         ForumCategory @relation(fields: [categoryId], references: [id])
+  author           User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments         ForumComment[]
+  tags             PostTag[]
+  likes            PostLike[]
 
   @@map("forum_posts")
 }
 
 model ForumComment {
-  id        String      @id @default(uuid())
-  postId    String      @map("post_id")
-  userId    String      @map("user_id")
-  content   String
-  parentId  String?     @map("parent_id")
-  createdAt DateTime    @default(now()) @map("created_at")
-  post      ForumPost   @relation(fields: [postId], references: [id])
-  user      User        @relation(fields: [userId], references: [id])
-  parent    ForumComment? @relation("CommentReplies", fields: [parentId], references: [id])
-  replies   ForumComment[] @relation("CommentReplies")
-  likes     ForumLike[]
+  id               String    @id @default(uuid()) 
+  postId           String    @map("post_id")
+  authorId         String    @map("author_id")
+  parentId         String?   @map("parent_id") // for nested replies
+  content          String
+  contentHtml      String?   @map("content_html")
+  upvotes          Int       @default(0)
+  isSolution       Boolean   @default(false) @map("is_solution")
+  deletedAt        DateTime? @map("deleted_at") 
+  createdAt        DateTime  @default(now()) @map("created_at") 
+  updatedAt        DateTime  @updatedAt @map("updated_at") 
+
+  post             ForumPost    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author           User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent           ForumComment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies          ForumComment[] @relation("CommentReplies")
 
   @@map("forum_comments")
 }
 
-model ForumLike {
-  id        String        @id @default(uuid())
-  userId    String        @map("user_id")
-  postId    String?       @map("post_id")
-  commentId String?       @map("comment_id")
-  createdAt DateTime      @default(now()) @map("created_at")
-  user      User          @relation(fields: [userId], references: [id])
-  post      ForumPost?    @relation(fields: [postId], references: [id])
-  comment   ForumComment? @relation(fields: [commentId], references: [id])
+model ForumTag {
+  id               String    @id @default(uuid()) 
+  name             String    @unique
+  slug             String    @unique
+  postCount        Int       @default(0) @map("post_count")
+  createdAt        DateTime  @default(now()) @map("created_at") 
 
-  @@map("forum_likes")
+  posts            PostTag[]
+
+  @@map("forum_tags")
 }
 
-model LanguageExchange {
-  id          String  @id @default(uuid())
-  userId      String  @unique @map("user_id")
-  nativeLang  String  @map("native_lang")
-  targetLang  String  @map("target_lang")
-  bio         String?
-  isAvailable Boolean @default(true) @map("is_available")
-  user        User    @relation(fields: [userId], references: [id])
+model PostTag {
+  postId           String    @map("post_id")
+  tagId            String    @map("tag_id")
 
-  @@map("language_exchange")
+  post             ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag              ForumTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("forum_post_tags")
 }
 
-model Challenge {
-  id           String                 @id @default(uuid())
-  title        String
-  description  String?
-  type         String
-  startDate    DateTime               @map("start_date")
-  endDate      DateTime               @map("end_date")
-  rewardXp     Int                    @map("reward_xp")
-  participants ChallengeParticipant[]
+model PostLike {
+  id               String    @id @default(uuid())
+  userId           String    @map("user_id")
+  postId           String    @map("post_id")
+  isUpvote         Boolean   @default(true) @map("is_upvote")
+  createdAt        DateTime  @default(now()) @map("created_at")
 
-  @@map("challenges")
-}
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post             ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-model ChallengeParticipant {
-  id          String    @id @default(uuid())
-  challengeId String    @map("challenge_id")
-  userId      String    @map("user_id")
-  progress    Float     @default(0)
-  completedAt DateTime? @map("completed_at")
-  challenge   Challenge @relation(fields: [challengeId], references: [id])
-  user        User      @relation(fields: [userId], references: [id])
-
-  @@map("challenge_participants")
-}
-
-// --- PAYMENTS ---
-model SubscriptionPlan {
-  id           String             @id @default(uuid())
-  name         String
-  price        Float
-  durationDays Int                @map("duration_days")
-  featuresJson Json               @map("features_json")
-  subscriptions UserSubscription[]
-
-  @@map("subscription_plans")
-}
-
-model UserSubscription {
-  id            String           @id @default(uuid())
-  userId        String           @map("user_id")
-  planId        String           @map("plan_id")
-  startedAt     DateTime         @default(now()) @map("started_at")
-  expiresAt     DateTime         @map("expires_at")
-  paymentMethod String?          @map("payment_method")
-  status        String           // ACTIVE, EXPIRED, CANCELLED
-  user          User             @relation(fields: [userId], references: [id])
-  plan          SubscriptionPlan @relation(fields: [planId], references: [id])
-
-  @@map("user_subscriptions")
-}
-
-model PaymentTransaction {
-  id            String   @id @default(uuid())
-  userId        String   @map("user_id")
-  planId        String?  @map("plan_id")
-  amount        Float
-  currency      String   @default("VND")
-  gateway       String   // MOMO, VNPAY, STRIPE
-  transactionId String   @unique @map("transaction_id")
-  status        String
-  createdAt     DateTime @default(now()) @map("created_at")
-  user          User     @relation(fields: [userId], references: [id])
-
-  @@map("payment_transactions")
-}
-
-// --- READING ---
-model ReadingPassage {
-  id           String             @id @default(uuid())
-  title        String
-  content      String             @db.Text
-  level        String
-  topic        String
-  durationMins Int?               @map("duration_mins")
-  imageUrl     String?            @map("image_url")
-  questions    ReadingQuestion[]
-  userProgress UserReadingProgress[]
-
-  @@map("reading_passages")
-}
-
-model ReadingQuestion {
-  id           String              @id @default(uuid())
-  passageId    String              @map("passage_id")
-  type         String              // MULTIPLE_CHOICE, TRUE_FALSE_NG, MATCHING_HEADINGS, SUMMARY_FILL, SHORT_ANSWER
-  questionText String              @map("question_text")
-  optionsJson  Json?               @map("options_json") // Detailed options
-  correctAnswer String             @map("correct_answer")
-  explanation  String?
-  orderIndex   Int                 @map("order_index")
-  passage      ReadingPassage      @relation(fields: [passageId], references: [id])
-  userAnswers  UserReadingAnswer[]
-
-  @@map("reading_questions")
-}
-
-model UserReadingProgress {
-  id           String              @id @default(uuid())
-  userId       String              @map("user_id")
-  passageId    String              @map("passage_id")
-  timeSpent    Int?                @map("time_spent") // in seconds
-  score        Float?
-  completedAt  DateTime            @default(now()) @map("completed_at")
-  user         User                @relation(fields: [userId], references: [id])
-  passage      ReadingPassage      @relation(fields: [passageId], references: [id])
-  userAnswers  UserReadingAnswer[]
-
-  @@map("user_reading_progress")
-}
-
-model UserReadingAnswer {
-  id           String              @id @default(uuid())
-  progressId   String              @map("progress_id")
-  questionId   String              @map("question_id")
-  userAnswer   String              @map("user_answer")
-  isCorrect    Boolean             @map("is_correct")
-  progress     UserReadingProgress @relation(fields: [progressId], references: [id])
-  question     ReadingQuestion     @relation(fields: [questionId], references: [id])
-
-  @@map("user_reading_answers")
-}
-
-// --- NOTIFICATIONS ---
-model Notification {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  type      String
-  title     String
-  message   String
-  isRead    Boolean  @default(false) @map("is_read")
-  createdAt DateTime @default(now()) @map("created_at")
-  user      User     @relation(fields: [userId], references: [id])
-
-  @@map("notifications")
+  @@unique([userId, postId])
+  @@map("forum_post_likes")
 }

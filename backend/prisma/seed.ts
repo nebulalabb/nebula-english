@@ -1,414 +1,326 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seed started...');
+  console.log('NebulaLab Seed started...');
 
-  // --- Seed Courses ---
-  const course1 = await prisma.course.upsert({
-    where: { id: 'course-beginner' },
+  // --- 1. Tạo các Plan Subscriptions ---
+  const freePlan = await prisma.subscriptionPlan.upsert({
+    where: { name: 'free' },
     update: {},
     create: {
-      id: 'course-beginner',
-      title: 'English for Beginners',
-      description: 'Start your journey with basic English.',
-      level: 'A1',
-      category: 'General',
-      orderIndex: 1,
-    },
-  });
-
-  // --- Seed Units ---
-  const unit1 = await prisma.unit.upsert({
-    where: { id: 'unit-1-beginner' },
-    update: {},
-    create: {
-      id: 'unit-1-beginner',
-      courseId: course1.id,
-      title: 'Greetings & Introduction',
-      description: 'Learn how to greet people and introduce yourself.',
-      orderIndex: 1,
-    },
-  });
-
-  // --- Seed Lessons ---
-  const lesson1 = await prisma.lesson.upsert({
-    where: { id: 'lesson-1-intro' },
-    update: {},
-    create: {
-      id: 'lesson-1-intro',
-      unitId: unit1.id,
-      title: 'Saying Hello',
-      type: 'VOCABULARY',
-      contentJson: {
-        text: 'Hello, Hi, Good morning',
-        media: [],
+      name: 'free',
+      displayName: 'Miễn phí',
+      priceVnd: 0,
+      billingCycle: null,
+      features: {
+        flashcard_limit: 20,
+        solver_daily_limit: 5,
+        summary_daily_limit: 3,
+        quiz_daily_limit: 1,
+        ai_model: 'gemini-1.5-flash',
+        storage_mb: 100
       },
-      durationMinutes: 10,
-      xpReward: 50,
-      orderIndex: 1,
+      sortOrder: 1
+    }
+  });
+
+  const premiumMonthly = await prisma.subscriptionPlan.upsert({
+    where: { name: 'premium_monthly' },
+    update: {},
+    create: {
+      name: 'premium_monthly',
+      displayName: 'Premium Tháng',
+      priceVnd: 99000,
+      billingCycle: 'monthly',
+      features: {
+        flashcard_limit: -1,
+        solver_daily_limit: -1,
+        summary_daily_limit: -1,
+        quiz_daily_limit: -1,
+        ai_model: 'gemini-1.5-pro',
+        storage_mb: 5000
+      },
+      sortOrder: 2
+    }
+  });
+
+  const premiumYearly = await prisma.subscriptionPlan.upsert({
+    where: { name: 'premium_yearly' },
+    update: {},
+    create: {
+      name: 'premium_yearly',
+      displayName: 'Premium Năm',
+      priceVnd: 799000,
+      billingCycle: 'yearly',
+      features: {
+        flashcard_limit: -1,
+        solver_daily_limit: -1,
+        summary_daily_limit: -1,
+        quiz_daily_limit: -1,
+        ai_model: 'gemini-1.5-pro',
+        storage_mb: 10000
+      },
+      sortOrder: 3
+    }
+  });
+
+  console.log('Seeded Subscription Plans');
+
+  // --- 2. Tạo Admin User ---
+  const adminPasswordHash = await bcrypt.hash('admin123', 10);
+  const adminUser = await prisma.user.upsert({
+    where: { email: 'lyvanquy2020@gmail.com' },
+    update: {
+      passwordHash: adminPasswordHash,
+      role: 'admin',
+      plan: 'premium',
+    },
+    create: {
+      email: 'lyvanquy2020@gmail.com',
+      passwordHash: adminPasswordHash,
+      fullName: 'Ly Van Quy (Admin)',
+      role: 'admin',
+      plan: 'premium',
+      emailVerified: true
     },
   });
 
-  // --- Seed Vocabulary ---
-  const vocabData = [
-    { word: 'Hello', phonetic: '/həˈləʊ/', definition: 'Một lời chào phổ biến.', level: 'A1', topic: 'Greetings' },
-    { word: 'Goodbye', phonetic: '/ˌɡʊdˈbaɪ/', definition: 'Chào tạm biệt.', level: 'A1', topic: 'Greetings' },
-    { word: 'Thank you', phonetic: '/ˈθæŋk juː/', definition: 'Cảm ơn.', level: 'A1', topic: 'Greetings' },
-    { word: 'Family', phonetic: '/ˈfæm.əl.i/', definition: 'Gia đình.', level: 'A1', topic: 'Family' },
-    { word: 'Father', phonetic: '/ˈfɑː.ðər/', definition: 'Cha, bố.', level: 'A1', topic: 'Family' },
-    { word: 'Mother', phonetic: '/ˈmʌð.ər/', definition: 'Mẹ.', level: 'A1', topic: 'Family' },
-    { word: 'Brother', phonetic: '/ˈbrʌð.ər/', definition: 'Anh/em trai.', level: 'A1', topic: 'Family' },
-    { word: 'Sister', phonetic: '/ˈsɪs.tər/', definition: 'Chị/em gái.', level: 'A1', topic: 'Family' },
-    { word: 'Friend', phonetic: '/frend/', definition: 'Bạn bè.', level: 'A1', topic: 'Family' },
-    { word: 'House', phonetic: '/haʊs/', definition: 'Ngôi nhà.', level: 'A1', topic: 'Home' },
-    { word: 'School', phonetic: '/skuːl/', definition: 'Trường học.', level: 'A1', topic: 'Education' },
-    { word: 'Teacher', phonetic: '/ˈtiː.tʃər/', definition: 'Giáo viên.', level: 'A1', topic: 'Education' },
-    { word: 'Student', phonetic: '/ˈstjuː.dənt/', definition: 'Học sinh, sinh viên.', level: 'A1', topic: 'Education' },
-    { word: 'Book', phonetic: '/bʊk/', definition: 'Quyển sách.', level: 'A1', topic: 'Education' },
-    { word: 'Work', phonetic: '/wɜːk/', definition: 'Công việc/Làm việc.', level: 'A1', topic: 'Work' },
-    { word: 'Office', phonetic: '/ˈɒf.ɪs/', definition: 'Văn phòng.', level: 'A1', topic: 'Work' },
-    { word: 'Computer', phonetic: '/kəmˈpjuː.tər/', definition: 'Máy tính.', level: 'A1', topic: 'Technology' },
-    { word: 'Internet', phonetic: '/ˈɪn.tə.net/', definition: 'Mạng internet.', level: 'A1', topic: 'Technology' },
-    { word: 'Travel', phonetic: '/ˈtræv.əl/', definition: 'Du lịch.', level: 'A1', topic: 'Travel' },
-    { word: 'Airport', phonetic: '/ˈeə.pɔːt/', definition: 'Sân bay.', level: 'A1', topic: 'Travel' },
-    // More words to reach 50+
-    { word: 'Restaurant', phonetic: '/ˈres.trɒnt/', definition: 'Nhà hàng.', level: 'A1', topic: 'Travel' },
-    { word: 'Hospital', phonetic: '/ˈhɒs.pɪ.təl/', definition: 'Bệnh viện.', level: 'A2', topic: 'Health' },
-    { word: 'Doctor', phonetic: '/ˈdɒk.tər/', definition: 'Bác sĩ.', level: 'A1', topic: 'Health' },
-    { word: 'Medicine', phonetic: '/ˈmed.sn/', definition: 'Thuốc.', level: 'A2', topic: 'Health' },
-    { word: 'Happy', phonetic: '/ˈhæp.i/', definition: 'Hạnh phúc.', level: 'A1', topic: 'Emotions' },
-    { word: 'Sad', phonetic: '/sæd/', definition: 'Buồn.', level: 'A1', topic: 'Emotions' },
-    { word: 'Angry', phonetic: '/ˈæŋ.ɡri/', definition: 'Tức giận.', level: 'A1', topic: 'Emotions' },
-    { word: 'Beautiful', phonetic: '/ˈbjuː.tɪ.fəl/', definition: 'Đẹp.', level: 'A1', topic: 'General' },
-    { word: 'Difficult', phonetic: '/ˈdɪf.ɪ.kəlt/', definition: 'Khó.', level: 'A1', topic: 'General' },
-    { word: 'Easy', phonetic: '/ˈiː.zi/', definition: 'Dễ.', level: 'A1', topic: 'General' },
-    { word: 'Market', phonetic: '/ˈmɑː.kɪt/', definition: 'Chợ.', level: 'A1', topic: 'Travel' },
-    { word: 'Money', phonetic: '/ˈmʌn.i/', definition: 'Tiền.', level: 'A1', topic: 'General' },
-    { word: 'Time', phonetic: '/taɪm/', definition: 'Thời gian.', level: 'A1', topic: 'General' },
-    { word: 'Year', phonetic: '/jɪər/', definition: 'Năm.', level: 'A1', topic: 'General' },
-    { word: 'Month', phonetic: '/mʌnθ/', definition: 'Tháng.', level: 'A1', topic: 'General' },
-    { word: 'Week', phonetic: '/wiːk/', definition: 'Tuần.', level: 'A1', topic: 'General' },
-    { word: 'Day', phonetic: '/deɪ/', definition: 'Ngày.', level: 'A1', topic: 'General' },
-    { word: 'Night', phonetic: '/naɪt/', definition: 'Đêm.', level: 'A1', topic: 'General' },
-    { word: 'Morning', phonetic: '/ˈmɔː.nɪŋ/', definition: 'Buổi sáng.', level: 'A1', topic: 'General' },
-    { word: 'Afternoon', phonetic: '/ˌɑːf.təˈnuːn/', definition: 'Buổi chiều.', level: 'A1', topic: 'General' },
-    { word: 'Evening', phonetic: '/ˈiːv.nɪŋ/', definition: 'Buổi tối.', level: 'A1', topic: 'General' },
-    { word: 'Sun', phonetic: '/sʌn/', definition: 'Mặt trời.', level: 'A1', topic: 'Nature' },
-    { word: 'Moon', phonetic: '/muːn/', definition: 'Mặt trăng.', level: 'A1', topic: 'Nature' },
-    { word: 'Water', phonetic: '/ˈwɔː.tər/', definition: 'Nước.', level: 'A1', topic: 'Nature' },
-    { word: 'Food', phonetic: '/fuːd/', definition: 'Thức ăn.', level: 'A1', topic: 'General' },
-    { word: 'Drink', phonetic: '/drɪŋk/', definition: 'Đồ uống.', level: 'A1', topic: 'General' },
-    { word: 'Bread', phonetic: '/bred/', definition: 'Bánh mì.', level: 'A1', topic: 'General' },
-    { word: 'Fruit', phonetic: '/fruːt/', definition: 'Trái cây.', level: 'A1', topic: 'General' },
-    { word: 'Apple', phonetic: '/ˈæp.l̩/', definition: 'Quả táo.', level: 'A1', topic: 'General' },
-    { word: 'Orange', phonetic: '/ˈɒr.ɪndʒ/', definition: 'Quả cam.', level: 'A1', topic: 'General' },
-    { word: 'Success', phonetic: '/səkˈses/', definition: 'Thành công.', level: 'B1', topic: 'Work' },
-    { word: 'Ability', phonetic: '/əˈbɪl.ə.ti/', definition: 'Khả năng.', level: 'B1', topic: 'General' },
+  // Assign Subscription cho admin
+  await prisma.subscription.create({
+    data: {
+      userId: adminUser.id,
+      planId: premiumYearly.id,
+      status: 'active',
+      expiresAt: new Date(new Date().setFullYear(new Date().getFullYear() + 10)) // 10 năm
+    }
+  });
+
+  console.log(`Seeded Admin User: ${adminUser.email}`);
+
+  // --- 3. Tạo Base Topics cho Micro-learning ---
+  const topics = [
+    { name: 'Tiếng Anh giao tiếp', slug: 'tieng-anh-giao-tiep', description: 'Giao tiếp hàng ngày, từ vựng theo tình huống' },
+    { name: 'Toán học vui', slug: 'toan-hoc-vui', description: 'Khám phá toán học qua các câu đố thú vị' },
+    { name: 'Kỹ năng mềm', slug: 'ky-nang-mem', description: 'Giao tiếp, thuyết trình, quản lý thời gian' }
   ];
 
-  for (const item of vocabData) {
-    await prisma.vocabWord.upsert({
-      where: { id: `word-${item.word.toLowerCase().replace(/\s+/g, '-')}` },
+  for (const t of topics) {
+    await prisma.learningTopic.upsert({
+      where: { slug: t.slug },
       update: {},
       create: {
-        id: `word-${item.word.toLowerCase().replace(/\s+/g, '-')}`,
-        ...item,
-      },
+        ...t,
+        isActive: true
+      }
     });
   }
 
-  // --- Seed Grammar ---
-  const grammarTopic1 = await prisma.grammarTopic.upsert({
-    where: { id: 'grammar-present-simple' },
-    update: {},
-    create: {
-      id: 'grammar-present-simple',
-      title: 'Thì Hiện tại đơn (Present Simple)',
-      description: 'Cách dùng, công thức và dấu hiệu nhận biết thì hiện tại đơn.',
-      level: 'A1',
-      orderIndex: 1,
-      contentJson: {
-        sections: [
-          {
-            title: '1. Cách dùng',
-            content: 'Diễn tả một thói quen, hành động lặp đi lặp lại hoặc một chân lý hiển nhiên.'
-          },
-          {
-            title: '2. Công thức',
-            content: 'Khẳng định: S + V(s/es). Phủ định: S + do/does + not + V. Nghi vấn: Do/Does + S + V?'
-          }
-        ],
-        quickNotes: 'He, She, It -> V thêm s/es. I, You, We, They -> V nguyên mẫu.'
+  console.log('Seeded Micro-learning Topics');
+
+  // --- 4. Tạo Dữ Liệu Thực Tế Cho Các Module AI ---
+
+  // 4.1. Flashcards (AI Generated)
+  await prisma.flashcardSet.create({
+    data: {
+      userId: adminUser.id,
+      title: '100 Từ Vựng IELTS Cốt Lõi',
+      description: 'Được tạo bởi AI dựa trên corpus IELTS',
+      subject: 'Tiếng Anh',
+      sourceType: 'ai_generated',
+      cardCount: 2,
+      isPublic: true,
+      flashcards: {
+        create: [
+          { front: 'Ubiquitous', back: 'Có mặt ở khắp mọi nơi', hint: 'u-bi-qui-tous', sortOrder: 1 },
+          { front: 'Ephemeral', back: 'Phù du, ngắn ngủi', hint: 'e-phem-er-al', sortOrder: 2 },
+        ]
       }
     }
   });
 
-  await prisma.grammarExercise.upsert({
-    where: { id: 'grammar-ex-1' },
-    update: {},
-    create: {
-      id: 'grammar-ex-1',
-      topicId: grammarTopic1.id,
-      type: 'MULTIPLE_CHOICE',
-      question: 'She ___ to school every day.',
-      optionsJson: ['go', 'goes', 'going', 'gone'],
-      correctAnswer: 'goes',
-      explanation: 'Với chủ ngữ "She" (ngôi thứ 3 số ít), động từ "go" phải thêm "es" thành "goes".',
-      orderIndex: 1
+  // 4.2. Giải Bài Tập Bằng AI (SolveHistory)
+  await prisma.solveHistory.create({
+    data: {
+      userId: adminUser.id,
+      subject: 'Toán học',
+      gradeLevel: 'Lớp 12',
+      questionText: 'Tính tích phân của e^x từ 0 đến 1',
+      answerText: 'Tích phân của e^x là e^x. Tại cận 1 và 0, giá trị là e^1 - e^0 = e - 1.',
+      answerHtml: '<p>Tích phân của <strong>e^x</strong> là <strong>e^x</strong>. Tại cận 1 và 0, giá trị là e^1 - e^0 = e - 1.</p>',
+      tokensUsed: 150,
+      modelUsed: 'gemini-1.5-pro',
+      isSaved: true
     }
   });
 
-  await prisma.grammarExercise.upsert({
-    where: { id: 'grammar-ex-2' },
-    update: {},
-    create: {
-      id: 'grammar-ex-2',
-      topicId: grammarTopic1.id,
-      type: 'FILL_IN_BLANK',
-      question: 'They ___ (not/like) apples.',
-      correctAnswer: 'do not like',
-      explanation: 'Với chủ ngữ "They", ta mượn trợ động từ "do" kèm "not" để thành lập câu phủ định.',
-      orderIndex: 2
+  // 4.3. Đề Thi Tự Động (AI Generated Exam)
+  await prisma.exam.create({
+    data: {
+      creatorId: adminUser.id,
+      title: 'Đề thi thử THPT Quốc Gia môn Toán 2026',
+      description: 'Đề thi được tạo tự động bởi AI, sát với cấu trúc đề minh họa.',
+      subject: 'Toán học',
+      gradeLevel: 'Lớp 12',
+      durationMinutes: 90,
+      totalQuestions: 2,
+      totalPoints: 10,
+      isAiGenerated: true,
+      isPublic: true,
+      questions: {
+        create: [
+          {
+            questionText: 'Hàm số nào dưới đây đồng biến trên R?',
+            questionType: 'single_choice',
+            options: ['y = x^3 - 3x', 'y = x^4 + x^2', 'y = 2x + 1', 'y = (x+1)/(x-1)'],
+            correctAnswers: ['y = 2x + 1'],
+            explanation: 'Hàm bậc nhất y = ax + b có đạo hàm y\' = a. Nếu a > 0 thì hàm số đồng biến trên R. Ở đây a = 2 > 0.',
+            points: 5,
+            sortOrder: 1
+          },
+          {
+            questionText: 'Cho hình chóp S.ABC có đáy là tam giác vuông cân tại B. Cạnh bên SA vuông góc với đáy. Khẳng định nào sau đây đúng?',
+            questionType: 'single_choice',
+            options: ['(SAB) vuông góc (SBC)', '(SAC) vuông góc (SBC)', 'SAB là tam giác đều', 'SC vuông góc AB'],
+            correctAnswers: ['(SAB) vuông góc (SBC)'],
+            explanation: 'SBC vuông góc với SAB vì BC vuông góc AB và BC vuông góc SA.',
+            points: 5,
+            sortOrder: 2
+          }
+        ]
+      }
     }
   });
 
-  // --- Seed Listening ---
-  const listeningEx1 = await prisma.listeningExercise.upsert({
-    where: { id: 'listening-daily-conv' },
-    update: {},
-    create: {
-      id: 'listening-daily-conv',
-      title: 'Cuộc hội thoại hàng ngày (A Daily Conversation)',
-      description: 'Nghe một cuộc hội thoại ngắn giữa hai người bạn về các hoạt động trong ngày.',
-      level: 'A2',
-      topic: 'Daily Life',
-      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', // Placeholder audio
-      transcript: 'Person A: Hi, how are you?\nPerson B: I am fine, thank you. What are you doing?\nPerson A: I am reading a book.\nPerson B: That sounds nice. What book is it?\nPerson A: It is a book about history.',
-      durationSec: 30,
-      orderIndex: 1
-    }
-  });
-
-  await prisma.listeningQuestion.upsert({
-    where: { id: 'listen-q1' },
-    update: {},
-    create: {
-      id: 'listen-q1',
-      exerciseId: listeningEx1.id,
-      type: 'MULTIPLE_CHOICE',
-      questionText: 'What is Person A doing?',
-      optionsJson: ['Reading a book', 'Sleeping', 'Eating', 'Walking'],
-      correctAnswer: 'Reading a book',
-      explanation: 'Trong transcript, Person A nói: "I am reading a book."',
-      orderIndex: 1
-    }
-  });
-
-  await prisma.listeningQuestion.upsert({
-    where: { id: 'listen-q2' },
-    update: {},
-    create: {
-      id: 'listen-q2',
-      exerciseId: listeningEx1.id,
-      type: 'FILL_IN_BLANK',
-      questionText: 'The book is about ___.',
-      correctAnswer: 'history',
-      explanation: 'Person A xác nhận: "It is a book about history."',
-      orderIndex: 2
-    }
-  });
-
-  // --- Seed Speaking ---
-  await prisma.speakingExercise.upsert({
-    where: { id: 'speak-ex-apple' },
-    update: {},
-    create: {
-      id: 'speak-ex-apple',
-      title: 'Phát âm từ: Apple',
-      description: 'Luyện tập phát âm từ "Apple" chính xác.',
-      level: 'A1',
-      type: 'PRONUNCIATION',
-      targetText: 'Apple',
-      phonetic: '/ˈæpl/',
-      orderIndex: 1
-    }
-  });
-
-  await prisma.speakingExercise.upsert({
-    where: { id: 'speak-ex-greeting' },
-    update: {},
-    create: {
-      id: 'speak-ex-greeting',
-      title: 'Chào hỏi cơ bản',
-      description: 'Đọc câu chào hỏi phổ biến một cách tự nhiên.',
-      level: 'A1',
-      type: 'READ_ALOUD',
-      targetText: 'How are you today?',
-      orderIndex: 2
-    }
-  });
-
-  // --- Seed Writing ---
-  await prisma.writingPrompt.upsert({
-    where: { id: 'write-ex-email' },
-    update: {},
-    create: {
-      id: 'write-ex-email',
-      title: 'Thư gửi bạn về kỳ nghỉ (Holiday Email)',
-      description: 'Viết email cho một người bạn kể về kỳ nghỉ gần nhất của bạn.',
-      requirements: 'Mention where you went, who you were with, and what you did. Use appropriate informal greetings and closings.',
-      type: 'EMAIL',
-      level: 'A2',
-      topic: 'Travel',
-      targetWords: 100,
-      tipsJson: [
-        'Sử dụng các thì quá khứ (Past Simple) để kể lại sự kiện.',
-        'Đừng quên các từ nối: First, Then, After that, Finally.',
-        'Cố gắng sử dụng ít nhất 3 tính từ miêu tả cảm xúc.'
-      ],
-      orderIndex: 1
-    }
-  });
-
-  await prisma.writingPrompt.upsert({
-    where: { id: 'write-ex-essay' },
-    update: {},
-    create: {
-      id: 'write-ex-essay',
-      title: 'Biến đổi khí hậu (Climate Change Essay)',
-      description: 'Nghị luận về nguyên nhân và giải pháp cho biến đổi khí hậu.',
-      requirements: 'Climate change is one of the most serious issues facing the world today. What are the causes and what can be done to solve this problem? Write at least 250 words.',
-      type: 'ESSAY',
-      level: 'B2',
-      topic: 'Environment',
-      targetWords: 250,
-      tipsJson: [
-        'Cấu trúc bài viết: Introduction, Causes, Solutions, Conclusion.',
-        'Sử dụng từ vựng học thuật: emissions, environmental impact, sustainable, mitigation.',
-        'Đưa ra các ví dụ cụ thể để minh họa cho luận điểm.'
-      ],
-      orderIndex: 2
-    }
-  });
-
-  // --- Seed Reading ---
-  const passage1 = await prisma.readingPassage.upsert({
-    where: { id: 'read-ex-tea' },
-    update: {},
-    create: {
-      id: 'read-ex-tea',
-      title: 'Lịch sử của Trà (The History of Tea)',
-      topic: 'History',
-      level: 'A2',
-      durationMins: 5,
-      content: `Trà là đồ uống phổ biến thứ hai trên thế giới, chỉ sau nước. Nó có nguồn gốc từ Trung Quốc cách đây hàng ngàn năm. Truyền thuyết kể rằng Hoàng đế Thần Nông đã tình cờ phát hiện ra trà khi một vài chiếc lá từ một bụi cây gần đó rơi vào nước đang sôi của ông. 
-
-Ngày nay, trà được trồng ở nhiều quốc gia, bao gồm Ấn Độ, Sri Lanka và Kenya. Có nhiều loại trà khác nhau như trà xanh, trà đen và trà ô long, tất cả đều đến từ cùng một loại cây gọi là Camellia sinensis. Sự khác biệt nằm ở cách chế biến lá sau khi hái.`
-    }
-  });
-
-  await prisma.readingQuestion.upsert({
-    where: { id: 'read-q1' },
-    update: {},
-    create: {
-      id: 'read-q1',
-      passageId: passage1.id,
-      type: 'MULTIPLE_CHOICE',
-      questionText: 'Trà có nguồn gốc từ quốc gia nào?',
-      optionsJson: ['Ấn Độ', 'Trung Quốc', 'Kenya', 'Sri Lanka'],
-      correctAnswer: 'Trung Quốc',
-      explanation: 'Đoạn văn nêu rõ: "Nó có nguồn gốc từ Trung Quốc cách đây hàng ngàn năm."',
-      orderIndex: 1
-    }
-  });
-
-  await prisma.readingQuestion.upsert({
-    where: { id: 'read-q2' },
-    update: {},
-    create: {
-      id: 'read-q2',
-      passageId: passage1.id,
-      type: 'TRUE_FALSE_NG',
-      questionText: 'Trà là đồ uống phổ biến nhất trên thế giới.',
-      optionsJson: ['True', 'False', 'Not Given'],
-      correctAnswer: 'False',
-      explanation: 'Trà là đồ uống phổ biến thứ hai, sau nước.',
-      orderIndex: 2
-    }
-  });
-
-  // --- Seed Placement Test ---
-  const placementSet = await prisma.examSet.upsert({
-    where: { id: 'placement-test-set' },
-    update: {},
-    create: {
-      id: 'placement-test-set',
-      title: 'Initial Placement Test',
-      type: 'PLACEMENT',
-      level: 'ALL',
-      durationMinutes: 30,
-    },
-  });
-
-  const placementQuestions = [
-    {
-      id: 'pt-q1',
-      examSetId: placementSet.id,
-      skill: 'GRAMMAR',
-      questionText: 'I ___ a student.',
-      optionsJson: ['am', 'is', 'are', 'be'],
-      correctAnswer: 'am',
-      orderIndex: 1,
-    },
-    {
-      id: 'pt-q2',
-      examSetId: placementSet.id,
-      skill: 'VOCABULARY',
-      questionText: 'Which word is a fruit?',
-      optionsJson: ['Car', 'Apple', 'Book', 'Phone'],
-      correctAnswer: 'Apple',
-      orderIndex: 2,
-    },
-    {
-      id: 'pt-q3',
-      examSetId: placementSet.id,
-      skill: 'GRAMMAR',
-      questionText: 'He ___ to the park every Sunday.',
-      optionsJson: ['go', 'goes', 'going', 'gone'],
-      correctAnswer: 'goes',
-      orderIndex: 3,
-    },
-    {
-      id: 'pt-q4',
-      examSetId: placementSet.id,
-      skill: 'READING',
-      questionText: 'If it is raining, you should take an ___.',
-      optionsJson: ['Umbrella', 'Sunscreen', 'Sunglasses', 'Hat'],
-      correctAnswer: 'Umbrella',
-      orderIndex: 4,
-    },
-    {
-      id: 'pt-q5',
-      examSetId: placementSet.id,
-      skill: 'GRAMMAR',
-      questionText: 'They ___ playing football now.',
-      optionsJson: ['is', 'am', 'are', 'was'],
-      correctAnswer: 'are',
-      orderIndex: 5,
-    },
-  ];
-
-  for (const q of placementQuestions) {
-    await prisma.examQuestion.upsert({
-      where: { id: q.id },
-      update: {},
-      create: q,
+  // 4.4. Bài Học Micro-learning (Daily Lesson)
+  const englishTopic = await prisma.learningTopic.findUnique({ where: { slug: 'tieng-anh-giao-tiep' } });
+  if (englishTopic) {
+    await prisma.dailyLesson.create({
+      data: {
+        topicId: englishTopic.id,
+        title: 'Cách chào hỏi tự nhiên như người bản xứ',
+        content: 'Thay vì nói How are you, hãy thử What\'s up hoặc How\'s it going...',
+        contentHtml: '<p>Thay vì nói <strong>How are you</strong>, hãy thử <strong>What\'s up</strong> hoặc <strong>How\'s it going</strong>...</p>',
+        estimatedMinutes: 5,
+        dayIndex: 1,
+        isPremium: false,
+        quizQuestion: {
+          question: 'Câu nào sau đây thân mật hơn "How are you"?',
+          options: ['How do you do?', 'What\'s up?', 'Are you well?'],
+          correct: 'What\'s up?'
+        }
+      }
     });
   }
 
-  console.log('Seed finished.');
+  // 4.5. AI Notes & Summaries
+  await prisma.note.create({
+    data: {
+      userId: adminUser.id,
+      title: 'Lịch sử hình thành AI',
+      sourceType: 'text',
+      sourceContent: 'Trí tuệ nhân tạo (AI) bắt đầu vào những năm 1950 với phép thử Turing. Sau nhiều "mùa đông AI", nó đã bùng nổ nhờ học sâu và phần cứng mạnh mẽ...',
+      wordCount: 300,
+      tags: ['AI', 'History'],
+      summaries: {
+        create: [
+          {
+            summaryShort: 'Tóm tắt sự phát triển của AI từ 1950s.',
+            bulletPoints: ['Bắt đầu 1950 với Turing test', 'Trải qua mùa đông AI', 'Bùng nổ nhờ Deep Learning'],
+            keywords: ['Trí tuệ nhân tạo', 'Turing', 'Deep Learning'],
+            modelUsed: 'gemini-1.5-pro',
+            tokensUsed: 400
+          }
+        ]
+      }
+    }
+  });
+
+  // 4.6. AI Quiz Generator
+  await prisma.quizSet.create({
+    data: {
+      userId: adminUser.id,
+      title: 'Quiz Nhanh: Kiến thức vũ trụ cơ bản',
+      description: 'Kiểm tra xem bạn biết bao nhiêu về hệ mặt trời!',
+      questionCount: 2,
+      difficulty: 'easy',
+      isPublic: true,
+      questions: {
+        create: [
+          {
+            questionText: 'Hành tinh nào gần mặt trời nhất?',
+            questionType: 'single_choice',
+            options: ['Sao Kim', 'Sao Thủy', 'Trái Đất', 'Sao Hỏa'],
+            correctAnswers: ['Sao Thủy'],
+            points: 10,
+            sortOrder: 1
+          },
+          {
+            questionText: 'Mặt trời là một hành tinh. Đúng hay sai?',
+            questionType: 'true_false',
+            options: ['Đúng', 'Sai'],
+            correctAnswers: ['Sai'],
+            explanation: 'Mặt trời là một ngôi sao, không phải hành tinh.',
+            points: 10,
+            sortOrder: 2
+          }
+        ]
+      }
+    }
+  });
+
+  console.log('✅ Created Learning Topics & Lessons')
+
+  // --------------------------------------------------------------------------------
+  // 9. FORUM SEED (NEW)
+  // --------------------------------------------------------------------------------
+  console.log('Seeding Forum Categories & Posts...')
+
+  const cats = await Promise.all([
+    prisma.forumCategory.create({ data: { name: 'Thảo luận chung', slug: 'thao-luan-chung', icon: '🗣️', color: 'blue' } }),
+    prisma.forumCategory.create({ data: { name: 'Chia sẻ kinh nghiệm', slug: 'chia-se-kinh-nghiem', icon: '💡', color: 'yellow' } }),
+    prisma.forumCategory.create({ data: { name: 'Tài liệu học tập', slug: 'tai-lieu-hoc-tap', icon: '📚', color: 'green' } }),
+    prisma.forumCategory.create({ data: { name: 'Hỏi đáp bài tập', slug: 'hoi-dap-bai-tap', icon: '❓', color: 'purple' } }),
+  ])
+
+  const forumPost1 = await prisma.forumPost.create({
+    data: {
+      categoryId: cats[1].id,
+      authorId: student1.id,
+      title: 'Làm sao để nhớ từ vựng hiệu quả mà không mau quên?',
+      content: 'Chào mọi người, mình gặp khó khăn trong việc ghi nhớ từ vựng. Cứ học hôm nay là ngày mốt quên sạch. Mọi người có phương pháp nào hiệu quả không chia sẻ giúp mình với ạ?',
+      viewCount: 156,
+      upvotes: 45,
+      isPinned: true
+    }
+  })
+
+  await prisma.forumComment.create({
+    data: {
+      postId: forumPost1.id,
+      authorId: tutor1.id,
+      content: 'Chào bạn, bạn nên áp dụng phương pháp Spaced Repetition (Lặp lại ngắt quãng). Trên NebulaLab có tính năng Học Từ Vựng Flashcard có tích hợp AI, nó sẽ tự nhắc bạn ôn lại khi nào sắp quên. Bạn thử nha!',
+      upvotes: 12,
+      isSolution: true
+    }
+  })
+
+  await prisma.forumPost.create({
+    data: {
+      categoryId: cats[2].id,
+      authorId: tutor1.id,
+      title: '[Share] Tổng hợp 1000 từ vựng IELTS cốt lõi 2026',
+      content: 'Mình vừa tổng hợp xong bộ từ vựng IELTS mới nhất update theo xu hướng đề thi năm nay. Các bạn tham khảo nhé...',
+      viewCount: 340,
+      upvotes: 89
+    }
+  })
+
+  console.log('✅ Created Forum Data')
+
+  console.log('🎉 Seeding finished successfully!');
 }
 
 main()

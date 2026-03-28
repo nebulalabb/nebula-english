@@ -86,4 +86,16 @@ export class UserController {
       next(error);
     }
   }
+
+  static async getRanking(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { period = 'week' } = req.query; // e.g. 'week', 'month', 'all'
+
+      const users = await UserService.getRanking(period as string);
+
+      res.status(200).json(users);
+    } catch (error) {
+      next(error);
+    }
+  }
 }

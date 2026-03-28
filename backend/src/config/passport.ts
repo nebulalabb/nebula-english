@@ -21,8 +21,7 @@ passport.use(
           user = await prisma.user.create({
             data: {
               email,
-              name: profile.displayName,
-              role: 'USER',
+              fullName: profile.displayName,
               // provider: 'GOOGLE',
               // providerId: profile.id,
             },
@@ -56,8 +55,7 @@ passport.use(
           user = await prisma.user.create({
             data: {
               email,
-              name: profile.displayName,
-              role: 'USER',
+              fullName: profile.displayName,
             },
           });
         }

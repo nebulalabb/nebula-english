@@ -1,0 +1,17 @@
+warn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file (e.g., `prisma.config.ts`).
+For more information, see: https://pris.ly/prisma-config
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "englishmaster", schema "public" at "localhost:5434"
+
+Your database is now in sync with your Prisma schema. Done in 11.68s
+
+Running generate... (Use --skip-generate to skip the generators)
+[2K[1A[2K[GRunning generate... - Prisma Client
+[2K[1A[2K[GEPERM: operation not permitted, rename 'E:\Web hocEnglish\nebula-english\node_mo
+dules\.pnpm\@prisma+client@6.19.2_prism_6b2b1af085fe6797f5a5ea830937a8e3\node_mo
+dules\.prisma\client\query_engine-windows.dll.node.tmp21740' -> 'E:\Web hocEngli
+sh\nebula-english\node_modules\.pnpm\@prisma+client@6.19.2_prism_6b2b1af085fe679
+7f5a5ea830937a8e3\node_modules\.prisma\client\query_engine-windows.dll.node'
+

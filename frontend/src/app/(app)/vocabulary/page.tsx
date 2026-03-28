@@ -1,16 +1,11 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, Plus, BookOpen, Repeat, LayoutGrid, Clock, Star, Volume2 } from 'lucide-react';
+import { Search, Plus, BookOpen, Repeat, LayoutGrid, Clock, Volume2, Star, Zap, Target, ChevronRight, Sparkles } from 'lucide-react';
 import axios from '@/lib/axios';
 import ReviewSession from '@/components/vocabulary/ReviewSession';
 import WordDetailModal from '@/components/vocabulary/WordDetailModal';
-import { Skeleton } from '@/components/ui/skeleton';
+import QuickFlipCard from '@/components/vocabulary/QuickFlipCard';
 
 const VocabularyPage = () => {
   const [topics, setTopics] = useState<string[]>([]);
@@ -18,268 +13,245 @@ const VocabularyPage = () => {
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [selectedWord, setSelectedWord] = useState<any>(null);
   const [isWordModalOpen, setIsWordModalOpen] = useState(false);
+  const [showQuickReview, setShowQuickReview] = useState(false);
   const [sets, setSets] = useState<any[]>([]);
   const [reviewCount, setReviewCount] = useState(0);
   const [reviewWords, setReviewWords] = useState<any[]>([]);
   const [showReview, setShowReview] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<'topics' | 'sets' | 'review'>('topics');
 
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
-
+  useEffect(() => { fetchInitialData(); }, []);
   const fetchInitialData = async () => {
     try {
       setLoading(true);
-      const [topicsRes, setsRes, reviewRes] = await Promise.all([
-        axios.get('/vocabulary/topics'),
-        axios.get('/vocabulary/sets'),
-        axios.get('/vocabulary/review')
-      ]);
-      setTopics(topicsRes.data);
-      setSets(setsRes.data);
-      setReviewCount(reviewRes.data.length);
-      setReviewWords(reviewRes.data);
-      
-      // Initially fetch all words or from first topic
-      const wordsRes = await axios.get('/vocabulary/words');
-      setWords(wordsRes.data);
-    } catch (error) {
-      console.error('Failed to fetch vocabulary data:', error);
-    } finally {
-      setLoading(false);
-    }
+      const [tr, sr, rr] = await Promise.all([axios.get('/vocabulary/topics'), axios.get('/vocabulary/sets'), axios.get('/vocabulary/review')]);
+      setTopics(tr.data); setSets(sr.data); setReviewCount(rr.data.length); setReviewWords(rr.data);
+      const wr = await axios.get('/vocabulary/words');
+      setWords(wr.data);
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   useEffect(() => {
-    const fetchWords = async () => {
+    const t = setTimeout(async () => {
       try {
-        const response = await axios.get('/vocabulary/words', {
-          params: {
-            topic: selectedTopic || undefined,
-            search: searchTerm || undefined
-          }
-        });
-        setWords(response.data);
-      } catch (error) {
-        console.error('Failed to fetch words:', error);
-      }
-    };
-
-    const timer = setTimeout(() => {
-      fetchWords();
+        const r = await axios.get('/vocabulary/words', { params: { topic: selectedTopic || undefined, search: searchTerm || undefined } });
+        setWords(r.data);
+      } catch (e) { console.error(e); }
     }, 300);
-
-    return () => clearTimeout(timer);
+    return () => clearTimeout(t);
   }, [selectedTopic, searchTerm]);
 
-  const handleWordClick = (word: any) => {
-    setSelectedWord(word);
-    setIsWordModalOpen(true);
-  };
-
   if (showReview) {
-    return (
-      <ReviewSession 
-        words={reviewWords} 
-        onComplete={() => {
-          setShowReview(false);
-          fetchInitialData();
-        }}
-        onClose={() => setShowReview(false)}
-      />
-    );
+    return <ReviewSession words={reviewWords} onComplete={() => { setShowReview(false); fetchInitialData(); }} onClose={() => setShowReview(false)} />;
   }
 
+  const tabs = [
+    { id: 'topics' as const, label: 'Chủ đề', icon: LayoutGrid },
+    { id: 'sets' as const, label: 'Flashcards', icon: BookOpen },
+    { id: 'review' as const, label: 'Ôn tập', icon: Repeat },
+  ];
+
+  const wc = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
+  const wi = { hidden: { opacity: 0, scale: 0.92 }, show: { opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 24 } } };
+
   return (
-    <div className="space-y-8 pb-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Học từ vựng</h1>
-          <p className="text-muted-foreground italic">Mở rộng vốn từ và làm chủ ngôn ngữ mỗi ngày.</p>
-        </div>
-        <Button className="rounded-full gap-2">
-          <Plus className="h-4 w-4" /> Tạo bộ Flashcard
-        </Button>
+    <div className="min-h-screen bg-[#0D0D1A] text-white relative overflow-hidden pb-24">
+      <div className="pointer-events-none fixed inset-0 -z-0">
+        <div className="absolute -top-20 right-0 w-[600px] h-[600px] bg-cyan-600/8 rounded-full blur-[130px]" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-teal-600/6 rounded-full blur-[120px]" />
       </div>
 
-      <Tabs defaultValue="topics" className="w-full">
-        <TabsList className="grid w-full max-w-2xl grid-cols-3 rounded-full h-12 p-1 bg-muted/50 border border-border/50">
-          <TabsTrigger value="topics" className="rounded-full gap-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <LayoutGrid className="h-4 w-4" /> Chủ đề
-          </TabsTrigger>
-          <TabsTrigger value="sets" className="rounded-full gap-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <BookOpen className="h-4 w-4" /> Flashcards
-          </TabsTrigger>
-          <TabsTrigger value="review" className="rounded-full gap-2 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm relative">
-            <Repeat className="h-4 w-4" /> Ôn tập
-            {reviewCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold border-2 border-background animate-pulse">
-                {reviewCount}
-              </span>
-            )}
-          </TabsTrigger>
-        </TabsList>
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-8 pt-10 space-y-8">
 
-        <div className="mt-8">
-          <TabsContent value="topics" className="space-y-6">
-            <div className="flex flex-col md:flex-row gap-4">
-               <div className="relative flex-1">
-                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                 <Input 
-                   placeholder="Tìm kiếm từ vựng..." 
-                   className="pl-10 h-11 rounded-xl bg-card border-border/40 focus:ring-primary/20"
-                   value={searchTerm}
-                   onChange={(e) => setSearchTerm(e.target.value)}
-                 />
-               </div>
-               <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                  <Button 
-                    variant={selectedTopic === null ? 'default' : 'outline'} 
-                    className="rounded-full whitespace-nowrap"
-                    onClick={() => setSelectedTopic(null)}
-                  >
-                    Tất cả
-                  </Button>
-                  {topics.map(topic => (
-                    <Button 
-                      key={topic} 
-                      variant={selectedTopic === topic ? 'default' : 'outline'} 
-                      className="rounded-full whitespace-nowrap capitalize"
-                      onClick={() => setSelectedTopic(topic)}
-                    >
-                      {topic}
-                    </Button>
+        {/* Hero */}
+        <motion.div initial={{ opacity: 0, y: -24 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 200 }}>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-5">
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center text-2xl shadow-lg shadow-cyan-500/30">🧠</div>
+                <div>
+                  <p className="text-cyan-400 font-black uppercase tracking-widest text-xs">Spaced Repetition AI</p>
+                  <h1 className="text-3xl sm:text-4xl font-extrabold">Học <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-400">Từ Vựng</span></h1>
+                </div>
+              </div>
+              <p className="text-slate-400 italic">"Học thông minh — nhớ lâu — dùng chuẩn."</p>
+            </div>
+            <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+              className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-teal-500 font-extrabold text-white shadow-xl shadow-cyan-500/25 whitespace-nowrap">
+              <Plus className="w-5 h-5" /> Tạo Flashcard
+            </motion.button>
+          </div>
+        </motion.div>
+
+        {/* Tab bar */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0, transition: { delay: 0.1 } }}
+          className="flex bg-white/4 border border-white/8 rounded-2xl p-1 w-full max-w-sm h-14">
+          {tabs.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-xl font-bold text-sm transition-all relative ${activeTab === tab.id ? 'bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>
+              <tab.icon className="h-4 w-4" /> {tab.label}
+              {tab.id === 'review' && reviewCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center text-[10px] font-black text-white border-2 border-[#0D0D1A] animate-pulse">
+                  {reviewCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </motion.div>
+
+        <AnimatePresence mode="wait">
+
+          {/* ─── Topics Tab ─── */}
+          {activeTab === 'topics' && (
+            <motion.div key="topics" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="relative flex-1 group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
+                  <input placeholder="Tìm từ vựng..."
+                    className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/8 hover:border-cyan-500/30 focus:border-cyan-500/60 rounded-2xl text-white placeholder:text-slate-600 outline-none transition-all text-sm"
+                    value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                  {[null, ...topics].map(topic => (
+                    <button key={topic ?? 'all'} onClick={() => setSelectedTopic(topic ?? null)}
+                      className={`px-4 py-3.5 rounded-2xl font-bold text-sm whitespace-nowrap capitalize transition-all ${selectedTopic === (topic ?? null) ? 'bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-md' : 'bg-white/5 border border-white/8 text-slate-400 hover:text-white'}`}>
+                      {topic ?? 'Tất cả'}
+                    </button>
                   ))}
-               </div>
-            </div>
+                </div>
+              </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-               {loading ? (
-                 Array(10).fill(0).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)
-               ) : words.length > 0 ? (
-                 words.map((word) => (
-                   <Card 
-                     key={word.id} 
-                     className="hover:border-primary/40 hover:shadow-md transition-all cursor-pointer group rounded-2xl overflow-hidden bg-card/50"
-                     onClick={() => handleWordClick(word)}
-                   >
-                     <CardHeader className="p-4 pb-2">
-                        <div className="flex justify-between items-start">
-                           <span className="text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                              {word.level}
-                           </span>
-                           <Volume2 className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                        <CardTitle className="text-xl font-bold mt-2">{word.word}</CardTitle>
-                     </CardHeader>
-                     <CardContent className="p-4 pt-0">
-                        <p className="text-xs text-muted-foreground line-clamp-1">{word.definition}</p>
-                     </CardContent>
-                   </Card>
-                 ))
-               ) : (
-                 <div className="col-span-full py-20 text-center space-y-4">
-                    <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center mx-auto">
-                       <Search className="h-10 w-10 text-muted-foreground opacity-20" />
+              {loading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                  {Array(10).fill(0).map((_, i) => <div key={i} className="h-36 rounded-2xl bg-white/4 border border-white/6 animate-pulse" />)}
+                </div>
+              ) : words.length === 0 ? (
+                <div className="py-24 flex flex-col items-center gap-4">
+                  <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center"><Search className="w-10 h-10 text-slate-700" /></div>
+                  <p className="text-slate-500 italic">Không tìm thấy từ nào...</p>
+                </div>
+              ) : (
+                <motion.div variants={wc} initial="hidden" animate="show"
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                  {words.map(word => (
+                    <motion.div key={word.id} variants={wi} whileHover={{ y: -4 }}
+                      onClick={() => { setSelectedWord(word); setIsWordModalOpen(true); }}
+                      className="group bg-white/4 border border-white/8 hover:border-cyan-500/40 hover:shadow-[0_8px_30px_-6px_rgba(6,182,212,0.25)] rounded-2xl p-4 cursor-pointer transition-all backdrop-blur-md">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="px-2 py-0.5 rounded-lg bg-cyan-500/15 text-cyan-400 text-[10px] font-black uppercase tracking-wider">{word.level}</span>
+                        <Volume2 className="w-4 h-4 text-slate-700 group-hover:text-cyan-400 transition-colors" />
+                      </div>
+                      <h4 className="text-lg font-extrabold mt-1 group-hover:text-cyan-300 transition-colors">{word.word}</h4>
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-1 leading-relaxed">{word.definition}</p>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ─── Flashcard Sets Tab ─── */}
+          {activeTab === 'sets' && (
+            <motion.div key="sets" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {sets.map((set, i) => (
+                  <motion.div key={set.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0, transition: { delay: i * 0.07 } }} whileHover={{ y: -4 }}
+                    className="group bg-white/4 border border-white/8 hover:border-cyan-500/40 rounded-3xl p-7 hover:shadow-[0_16px_40px_-12px_rgba(6,182,212,0.2)] transition-all flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 border border-cyan-500/20 flex items-center justify-center">
+                        <BookOpen className="w-5 h-5 text-cyan-400" />
+                      </div>
+                      <Star className="w-5 h-5 text-slate-700 group-hover:text-yellow-400 transition-colors" />
                     </div>
-                    <p className="text-muted-foreground italic">Không tìm thấy từ nào phù hợp...</p>
-                 </div>
-               )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="sets" className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sets.map((set) => (
-                <Card key={set.id} className="group overflow-hidden rounded-2xl border-border/40 hover:shadow-xl transition-all">
-                   <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-md">
-                         <Star className="h-4 w-4" />
-                      </Button>
-                   </div>
-                   <CardHeader className="relative pb-2">
-                     <CardTitle className="text-2xl font-black">{set.title}</CardTitle>
-                     <CardDescription className="line-clamp-2">{set.description || 'Không có mô tả'}</CardDescription>
-                   </CardHeader>
-                   <CardContent className="flex items-center gap-4 text-sm text-muted-foreground italic">
-                     <div className="flex items-center gap-1">
-                        <BookOpen className="h-4 w-4" /> {set._count?.setWords || 0} từ
-                     </div>
-                     <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" /> Mới cập nhật
-                     </div>
-                   </CardContent>
-                   <CardFooter className="bg-muted/30 border-t border-border/20 p-4 gap-3">
-                      <Button className="flex-1 rounded-xl font-bold shadow-lg shadow-primary/20">Học ngay</Button>
-                      <Button variant="outline" className="rounded-xl px-3">Sửa</Button>
-                   </CardFooter>
-                </Card>
-              ))}
-              
-              {/* Empty State / Create New */}
-              <Card className="border-dashed border-2 flex flex-col items-center justify-center p-12 text-center group hover:bg-muted/20 transition-all cursor-pointer rounded-2xl">
-                 <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <Plus className="h-8 w-8 text-muted-foreground" />
-                 </div>
-                 <h3 className="font-bold text-lg">Tạo bộ mới</h3>
-                 <p className="text-sm text-muted-foreground">Nhóm các từ vựng lại để dễ dàng ghi nhớ.</p>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="review" className="flex flex-col items-center justify-center py-12 space-y-8">
-            <div className="relative text-center space-y-6 max-w-lg">
-              <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-48 bg-primary/10 rounded-full blur-3xl -z-10" />
-              
-              <div className="space-y-2">
-                <span className="text-primary font-black uppercase tracking-widest text-sm">Ôn tập hôm nay</span>
-                <h2 className="text-5xl font-black tracking-tight">Hôm nay cần ôn <span className="text-primary italic underline decoration-wavy underline-offset-8">{reviewCount}</span> từ</h2>
-                <p className="text-muted-foreground italic text-lg pt-4">"Lặp lại ngắt quãng (Spaced Repetition) là chìa khóa để kiến thức đi sâu vào trí nhớ dài hạn."</p>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-extrabold group-hover:text-cyan-300 transition-colors mb-1">{set.title}</h3>
+                      <p className="text-slate-500 text-sm line-clamp-2">{set.description || 'Bộ từ vựng được tuyển chọn'}</p>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-slate-600 font-bold">
+                      <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> {set._count?.setWords || 0} từ</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Mới cập nhật</span>
+                    </div>
+                    <div className="flex gap-3">
+                      <button className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-teal-500 text-white font-bold shadow-md hover:opacity-90 transition-opacity">Học ngay</button>
+                      <button className="w-12 rounded-2xl bg-white/5 border border-white/8 text-slate-400 hover:text-white font-bold transition-all text-sm">✏️</button>
+                    </div>
+                  </motion.div>
+                ))}
+                {/* Create new */}
+                <motion.button whileHover={{ y: -4 }}
+                  className="flex flex-col items-center justify-center p-12 bg-white/3 border-2 border-dashed border-white/10 hover:border-cyan-500/40 rounded-3xl group transition-all">
+                  <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 group-hover:bg-cyan-500/10 group-hover:border-cyan-500/30 flex items-center justify-center mb-4 transition-all">
+                    <Plus className="w-8 h-8 text-slate-600 group-hover:text-cyan-400 transition-colors" />
+                  </div>
+                  <p className="font-extrabold text-lg group-hover:text-cyan-300 transition-colors">Tạo bộ mới</p>
+                  <p className="text-sm text-slate-600 mt-1">Nhóm từ để dễ nhớ hơn</p>
+                </motion.button>
               </div>
+            </motion.div>
+          )}
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
-                <Button 
-                  size="lg" 
-                  className="h-16 px-12 text-xl font-black rounded-full shadow-2xl shadow-primary/30 gap-3" 
-                  disabled={reviewCount === 0}
-                  onClick={() => setShowReview(true)}
-                >
-                  <Repeat className="h-6 w-6" /> Bắt đầu ngay
-                </Button>
-                <Button variant="outline" size="lg" className="h-16 px-10 text-xl font-bold rounded-full group">
-                  Luyện tập tự do <Search className="ml-2 h-5 w-5 opacity-50 group-hover:opacity-100 transition-opacity" />
-                </Button>
-              </div>
+          {/* ─── Review Tab ─── */}
+          {activeTab === 'review' && (
+            <motion.div key="review" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+              className="flex flex-col items-center justify-center py-16 text-center">
+              {showQuickReview ? (
+                <div className="w-full max-w-lg mx-auto bg-slate-900/50 p-6 rounded-3xl border border-white/10 shadow-2xl">
+                  <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2 justify-center"><Sparkles className="text-cyan-400 w-5 h-5" /> Luyện tập siêu tốc</h3>
+                  <QuickFlipCard
+                    words={reviewWords.slice(0, 10).map(w => ({ word: w.word, phonetic: w.level, definition: w.definition, example: w.word }))}
+                    onComplete={() => setShowQuickReview(false)}
+                  />
+                  <button onClick={() => setShowQuickReview(false)} className="mt-6 text-sm text-slate-500 hover:text-white underline">Thoát ôn tập</button>
+                </div>
+              ) : (
+                <div className="relative max-w-md w-full">
+                  {/* Glow */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl -z-10" />
+                  {/* Big icon */}
+                  <motion.div animate={{ rotate: [0, 5, -5, 0], scale: [1, 1.04, 1] }} transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+                    className="w-36 h-36 rounded-[2rem] bg-gradient-to-br from-cyan-500/20 to-teal-500/20 border-2 border-cyan-500/30 flex items-center justify-center mx-auto mb-8 shadow-[0_0_60px_rgba(6,182,212,0.2)]">
+                    <Repeat className="w-20 h-20 text-cyan-400 drop-shadow-[0_0_20px_rgba(6,182,212,0.8)]" />
+                  </motion.div>
+                  <p className="text-cyan-400 font-black uppercase tracking-widest text-sm mb-2">Spaced Repetition</p>
+                  <h2 className="text-5xl sm:text-6xl font-extrabold tracking-tight mb-3">
+                    Ôn <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-400">{reviewCount}</span> từ
+                  </h2>
+                  <p className="text-slate-400 italic text-lg leading-relaxed mb-10">"Lặp lại đúng lúc — kiến thức in sâu vào trí nhớ dài hạn mãi mãi."</p>
 
-              <div className="flex items-center justify-center gap-8 pt-8 text-center">
-                 <div>
-                    <div className="text-2xl font-black text-primary">5</div>
-                    <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Ngày liên tiếp</div>
-                 </div>
-                 <div className="w-px h-8 bg-border/50" />
-                 <div>
-                    <div className="text-2xl font-black text-primary">120</div>
-                    <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Từ đã thuộc</div>
-                 </div>
-              </div>
-            </div>
-          </TabsContent>
-        </div>
-      </Tabs>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
+                    <motion.button onClick={() => setShowReview(true)} disabled={reviewCount === 0} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                      className="flex items-center justify-center gap-3 px-10 py-5 rounded-2xl font-extrabold text-xl bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-2xl shadow-cyan-500/30 disabled:opacity-30 disabled:cursor-not-allowed">
+                      <Repeat className="w-6 h-6" /> Bắt đầu ngay
+                    </motion.button>
+                    <motion.button onClick={() => setShowQuickReview(true)} whileHover={{ scale: 1.02 }} disabled={reviewWords.length === 0}
+                      className="flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-bold text-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30">
+                      Ôn lật thẻ <Target className="w-5 h-5" />
+                    </motion.button>
+                  </div>
 
-      <WordDetailModal 
-        word={selectedWord}
-        isOpen={isWordModalOpen}
-        onClose={() => setIsWordModalOpen(false)}
-        onAddToSet={(wordId) => {
-          console.log('Add to set:', wordId);
-          // TODO: Implement Add to Set modal/logic
-        }}
-      />
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      { icon: <Zap className="w-5 h-5 text-yellow-400" />, label: 'Ngày liên tiếp', val: '5', color: 'text-yellow-400' },
+                      { icon: <Star className="w-5 h-5 text-cyan-400" />, label: 'Từ đã thuộc', val: '120', color: 'text-cyan-400' },
+                    ].map((s, i) => (
+                      <div key={i} className="bg-white/4 border border-white/8 rounded-2xl p-5">
+                        <div className="flex justify-center mb-2">{s.icon}</div>
+                        <div className={`text-3xl font-extrabold ${s.color} mb-1`}>{s.val}</div>
+                        <div className="text-xs text-slate-500 font-bold uppercase tracking-widest">{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <WordDetailModal word={selectedWord} isOpen={isWordModalOpen} onClose={() => setIsWordModalOpen(false)} onAddToSet={(id: string) => console.log('add:', id)} />
     </div>
   );
 };
-
 export default VocabularyPage;
