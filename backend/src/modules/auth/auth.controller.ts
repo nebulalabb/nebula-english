@@ -7,7 +7,12 @@ const ok = (res: Response, data: any, status = 200) =>
 export class AuthController {
   static async register(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await AuthService.register(req.body);
+      const { email, password, name, fullName } = req.body;
+      const result = await AuthService.register({
+        email,
+        password,
+        fullName: fullName || name
+      });
       ok(res, result, 201);
     } catch (e) { next(e); }
   }

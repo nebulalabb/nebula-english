@@ -72,16 +72,16 @@ async function main() {
   // --- 2. Tạo Admin User ---
   const adminPasswordHash = await bcrypt.hash('admin123', 10);
   const adminUser = await prisma.user.upsert({
-    where: { email: 'lyvanquy2020@gmail.com' },
+    where: { email: 'nhoangkha03@gmail.com' },
     update: {
       passwordHash: adminPasswordHash,
       role: 'admin',
       plan: 'premium',
     },
     create: {
-      email: 'lyvanquy2020@gmail.com',
+      email: 'nhoangkha03@gmail.com',
       passwordHash: adminPasswordHash,
-      fullName: 'Ly Van Quy (Admin)',
+      fullName: 'Nguyễn Hoàng Kha (Admin)',
       role: 'admin',
       plan: 'premium',
       emailVerified: true
@@ -99,6 +99,41 @@ async function main() {
   });
 
   console.log(`Seeded Admin User: ${adminUser.email}`);
+  
+  // --- Created Tutor ---
+  const tutorPasswordHash = await bcrypt.hash('tutor123', 10);
+  const tutor1 = await prisma.user.upsert({
+    where: { email: 'tutor1@nebula.com' },
+    update: {
+      passwordHash: tutorPasswordHash,
+      role: 'tutor'
+    },
+    create: {
+      email: 'tutor1@nebula.com',
+      passwordHash: tutorPasswordHash,
+      fullName: 'Phan Minh Tutor',
+      role: 'tutor',
+      plan: 'free',
+      emailVerified: true
+    }
+  });
+
+  // --- Created Student ---
+  const studentPasswordHash = await bcrypt.hash('student123', 10);
+  const student1 = await prisma.user.upsert({
+    where: { email: 'student1@nebula.com' },
+    update: {
+      passwordHash: studentPasswordHash,
+    },
+    create: {
+      email: 'student1@nebula.com',
+      passwordHash: studentPasswordHash,
+      fullName: 'Nguyen Van Student',
+      role: 'student',
+      plan: 'free',
+      emailVerified: true
+    }
+  });
 
   // --- 3. Tạo Base Topics cho Micro-learning ---
   const topics = [

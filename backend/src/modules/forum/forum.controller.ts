@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import { prisma } from '../../config/prisma';
+import { AuthRequest } from '../../middleware/authGuard.middleware';
+import prisma from '../../config/prisma';
 import logger from '../../config/logger';
 
 export const getCategories = async (req: Request, res: Response) => {
@@ -67,18 +68,18 @@ export const getPosts = async (req: Request, res: Response) => {
     }
 };
 
-export const getPostDetail = async (req: Request, res: Response) => {
+export const getPostDetail = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
 
         // Increment view count
         await prisma.forumPost.update({
-            where: { id },
+            where: { id: id as string },
             data: { viewCount: { increment: 1 } }
         });
 
         const post = await prisma.forumPost.findUnique({
-            where: { id },
+            where: { id: id as string },
             include: {
                 author: { select: { id: true, fullName: true, avatarUrl: true, role: true } },
                 category: true,
@@ -118,7 +119,7 @@ export const getPostDetail = async (req: Request, res: Response) => {
     }
 };
 
-export const createPost = async (req: Request, res: Response) => {
+export const createPost = async (req: AuthRequest, res: Response) => {
     try {
         const { title, content, categoryId } = req.body;
         const userId = req.user!.id;
@@ -147,28 +148,28 @@ export const createPost = async (req: Request, res: Response) => {
     }
 };
 
-export const toggleLike = async (req: Request, res: Response) => {
+export const toggleLike = async (req: AuthRequest, res: Response) => {
     try {
         const { id: postId } = req.params;
         const userId = req.user!.id;
 
         const existingLik = await prisma.postLike.findUnique({
-            where: { userId_postId: { userId, postId } }
+            where: { userId_postId: { userId: userId as string, postId: postId as string } }
         });
 
         if (existingLik) {
             await prisma.postLike.delete({ where: { id: existingLik.id } });
             await prisma.forumPost.update({
-                where: { id: postId },
+                where: { id: postId as string },
                 data: { upvotes: { decrement: 1 } }
             });
             res.json({ liked: false });
         } else {
             await prisma.postLike.create({
-                data: { userId, postId }
+                data: { userId: userId as string, postId: postId as string }
             });
             await prisma.forumPost.update({
-                where: { id: postId },
+                where: { id: postId as string },
                 data: { upvotes: { increment: 1 } }
             });
             res.json({ liked: true });
@@ -179,7 +180,7 @@ export const toggleLike = async (req: Request, res: Response) => {
     }
 };
 
-export const createComment = async (req: Request, res: Response) => {
+export const createComment = async (req: AuthRequest, res: Response) => {
     try {
         const { id: postId } = req.params;
         const { content, parentId } = req.body;
@@ -190,8 +191,8 @@ export const createComment = async (req: Request, res: Response) => {
         const comment = await prisma.forumComment.create({
             data: {
                 content,
-                postId,
-                authorId: userId,
+                postId: postId as string,
+                authorId: userId as string,
                 parentId: parentId || null
             },
             include: {

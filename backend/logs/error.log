@@ -85,3 +85,19 @@
 2026-03-28 18:46:55:4655 [31merror[39m: [31m401 - Token không hợp lệ hoặc đã hết hạn - /api/v1/solver/history?page=1&limit=50 - GET - ::1[39m
 2026-03-28 18:47:00:470 [31merror[39m: [31m401 - Bạn chưa đăng nhập - /api/v1/solver/history?page=1&limit=50 - GET - ::1[39m
 2026-03-28 18:47:00:470 [31merror[39m: [31m401 - Bạn chưa đăng nhập - /api/v1/solver/history?page=1&limit=50 - GET - ::1[39m
+2026-03-30 11:41:24:4124 [31merror[39m: [31m500 - [39m
+[31mInvalid `prisma.user.create()` invocation in[39m
+[31mD:\xampp\htdocs\my-project\nebula-english\backend\src\modules\auth\auth.service.ts:17:36[39m
+
+[31m  14 if (existing) throw new AppError('Email này đã được sử dụng', 409);[39m
+[31m  15 [39m
+[31m  16 const passwordHash = await hashPassword(password);[39m
+[31m→ 17 const user = await prisma.user.create({[39m
+[31m       data: {[39m
+[31m         email: "nebulalab.dev@gmail.com",[39m
+[31m         passwordHash: "$2b$10$H72SnLsr1.zRfMFLFQy5Se1bnKGsvwm4UnjwBsip77Hym4KYh3m4C",[39m
+[31m     +   fullName: String[39m
+[31m       }[39m
+[31m     })[39m
+
+[31mArgument `fullName` is missing. - /api/v1/auth/register - POST - ::1[39m
