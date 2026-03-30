@@ -170,7 +170,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const response = await api.post('/auth/login', data);
-      const { user, accessToken } = response.data;
+      const { user, accessToken } = response.data.data;
       
       setAuth(user, accessToken);
       
